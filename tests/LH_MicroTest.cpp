@@ -52,7 +52,7 @@ void prepare() {
     for (int i = 0; i < thread_number; i++) {
         parms[i].tid = i;
         parms[i].levelHash = levelHash;
-        parms[i].insert = new uint8_t *[total_count / thread_number];
+        parms[i].insert = (uint8_t **) calloc(total_count / thread_number, sizeof(uint8_t *));
         char buf[DEFAULT_KEY_LENGTH];
         for (int j = 0; j < total_count / thread_number; j++) {
             std::sprintf(buf, "%d", i + j * thread_number);
