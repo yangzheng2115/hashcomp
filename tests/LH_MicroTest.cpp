@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include "tracer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,13 +13,15 @@
 #define DEFAULT_STR_LENGTH 256
 #define DEFAULT_KEY_LENGTH 8
 
+#define TEST_LOOKUP 1
+
 uint8_t *loads;
 
 long total_time;
 
 uint64_t exists = 0;
 
-uint64_t update = 0;
+uint64_t success = 0;
 
 uint64_t failure = 0;
 
@@ -50,6 +53,7 @@ void prepare() {
     cout << "prepare" << endl;
     workers = new pthread_t[thread_number];
     parms = new struct target[thread_number];
+    output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
         parms[i].tid = i;
         parms[i].levelHash = levelHash;
@@ -82,6 +86,9 @@ void finish() {
         }
         delete[] parms[i].insert;
     }
+    delete[] parms;
+    delete[] workers;
+    delete[] output;
 }
 
 void simpleInsert() {
@@ -124,11 +131,11 @@ void uniqueInsert() {
         if (!level_insert(levelHash, &uniques[i * DEFAULT_KEY_LENGTH], &uniques[i * DEFAULT_KEY_LENGTH])) {
             inserted++;
         }
-        if (false && (i % 100000 == 0 || (i - 10000000) % 100 == 1)) {
+        /*if (false && (i % 100000 == 0 || (i - 10000000) % 100 == 1)) {
             memset(buf, 0, DEFAULT_STR_LENGTH);
             memcpy(buf, &uniques[i * DEFAULT_KEY_LENGTH], DEFAULT_KEY_LENGTH);
             cout << i << " " << buf << " " << uniques[i * DEFAULT_KEY_LENGTH] << endl;
-        }
+        }*/
     }
     cout << inserted << " " << tracer.getRunTime() << endl;
     tracer.startTime();
@@ -157,27 +164,26 @@ void *insertWorker(void *args) {
     __sync_fetch_and_add(&exists, fail);
 }
 
-/*void *measureWorker(void *args) {
+void *measureWorker(void *args) {
     Tracer tracer;
     tracer.startTime();
     struct target *work = (struct target *) args;
-    //cout << "Updater " << work->tid << endl;
     uint64_t hit = 0;
     uint64_t fail = 0;
+    uint8_t value[DEFAULT_KEY_LENGTH];
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = work->tid; i < total_count; i += thread_number) {
 #if TEST_LOOKUP
-            if (work->set->contains(loads[i])) {
+            if (0 == level_query(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], value)) {
                 hit++;
             } else {
                 fail++;
             }
 #else
-            if (work->set->remove(loads[i])) {
+            if (0 == level_update(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], &loads[i * DEFAULT_KEY_LENGTH])) {
                 hit++;
-                if (!work->set->add(loads[i])) {
-                    fail++;
-                }
+            } else {
+                fail++;
             }
 #endif
         }
@@ -186,11 +192,12 @@ void *insertWorker(void *args) {
     long elipsed = tracer.getRunTime();
     output[work->tid] << work->tid << " " << elipsed << endl;
     __sync_fetch_and_add(&total_time, elipsed);
-    __sync_fetch_and_add(&update, hit);
+    __sync_fetch_and_add(&success, hit);
     __sync_fetch_and_add(&failure, fail);
-}*/
+}
 
 void multiWorkers() {
+    output = new stringstream[thread_number];
     Tracer tracer;
     tracer.startTime();
     for (int i = 0; i < thread_number; i++) {
@@ -200,7 +207,6 @@ void multiWorkers() {
         pthread_join(workers[i], nullptr);
     }
     cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
-    /*
     Timer timer;
     timer.start();
     for (int i = 0; i < thread_number; i++) {
@@ -214,11 +220,9 @@ void multiWorkers() {
         pthread_join(workers[i], nullptr);
         string outstr = output[i].str();
         cout << outstr;
-    }*/
+    }
     cout << "Gathering ..." << endl;
     finish();
-    delete[] parms;
-    delete[] workers;
 }
 
 int main(int argc, char **argv) {
@@ -243,6 +247,8 @@ int main(int argc, char **argv) {
     restart();
     cout << "multiinsert" << endl;
     multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
     return 0;
 }
