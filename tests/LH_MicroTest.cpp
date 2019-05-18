@@ -24,6 +24,8 @@ uint64_t total_count = DEFAULT_KEYS_COUNT;
 
 int thread_number = DEFAULT_THREAD_NUM;
 
+int key_range = DEFAULT_KEYS_RANGE;
+
 level_hash *levelHash;
 
 stringstream *output;
@@ -180,12 +182,14 @@ void multiWorkers() {
 }
 
 int main(int argc, char **argv) {
-    if (argc == 2) {
+    if (argc > 3) {
         thread_number = std::atol(argv[1]);
-        total_count = std::atol(argv[2]);
+        key_range = std::atol(argv[2]);
+        total_count = std::atol(argv[3]);
     }
+    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint8_t *) malloc(sizeof(uint8_t) * DEFAULT_KEY_LENGTH * total_count);
-    UniformGen<uint8_t>::generate(loads, DEFAULT_KEY_LENGTH, DEFAULT_KEYS_RANGE, total_count);
+    UniformGen<uint8_t>::generate(loads, DEFAULT_KEY_LENGTH, key_range, total_count);
     levelHash = level_init(DEFAULT_HASH_LEVEL);
     simpleInsert();
     prepare();
