@@ -9,6 +9,7 @@
 #define DEFAULT_KEYS_COUNT (1 << 20)
 #define DEFAULT_KEYS_RANGE (1 << 2)
 
+#define DEFAULT_STR_LENGTH 256
 #define DEFAULT_KEY_LENGTH 8
 
 uint8_t *loads;
@@ -53,11 +54,11 @@ void prepare() {
         parms[i].tid = i;
         parms[i].levelHash = levelHash;
         parms[i].insert = (uint8_t **) calloc(total_count / thread_number, sizeof(uint8_t *));
-        char buf[DEFAULT_KEY_LENGTH];
+        char buf[DEFAULT_STR_LENGTH];
         for (int j = 0; j < total_count / thread_number; j++) {
             std::sprintf(buf, "%d", i + j * thread_number);
-            parms[i].insert[j] = new uint8_t[DEFAULT_KEY_LENGTH];
-            memcpy(parms[i].insert[j], buf, DEFAULT_KEY_LENGTH - 1);
+            parms[i].insert[j] = (uint8_t *) malloc(DEFAULT_KEY_LENGTH * sizeof(uint8_t));
+            memcpy(parms[i].insert[j], buf, DEFAULT_KEY_LENGTH);
         }
     }
 }
