@@ -1,6 +1,7 @@
 #include <iostream>
 #include "tracer.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "level_hashing.h"
 
 #define DEFAULT_HASH_LEVEL (25)
@@ -188,7 +189,7 @@ int main(int argc, char **argv) {
         total_count = std::atol(argv[3]);
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
-    loads = (uint8_t *) malloc(sizeof(uint8_t) * DEFAULT_KEY_LENGTH * total_count);
+    loads = (uint8_t *) calloc(DEFAULT_KEY_LENGTH * total_count, sizeof(uint8_t));
     UniformGen<uint8_t>::generate(loads, DEFAULT_KEY_LENGTH, key_range, total_count);
     levelHash = level_init(DEFAULT_HASH_LEVEL);
     simpleInsert();
