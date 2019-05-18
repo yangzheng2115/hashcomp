@@ -97,13 +97,13 @@ void simpleInsert() {
     tracer.startTime();
     uint64_t found = 0;
     uint8_t value[DEFAULT_KEY_LENGTH];
-    for (int i = 0; i < total_count; i += DEFAULT_KEY_LENGTH) {
+    for (int i = 0; i < total_count; i++) {
         found += (0 == level_query(levelHash, &loads[i * DEFAULT_KEY_LENGTH], value));
     }
     cout << found << " " << tracer.getRunTime() << endl;
     tracer.startTime();
     found = 0;
-    for (int i = 0; i < total_count; i += DEFAULT_KEY_LENGTH) {
+    for (int i = 0; i < total_count; i++) {
         found += (0 == level_delete(levelHash, &loads[i * DEFAULT_KEY_LENGTH]));
     }
     cout << found << " " << tracer.getRunTime() << endl;
@@ -134,13 +134,13 @@ void uniqueInsert() {
     tracer.startTime();
     uint64_t found = 0;
     uint8_t value[DEFAULT_KEY_LENGTH];
-    for (int i = 0; i < total_count; i += DEFAULT_KEY_LENGTH) {
+    for (int i = 0; i < total_count; i++) {
         found += (0 == level_query(levelHash, &uniques[i * DEFAULT_KEY_LENGTH], value));
     }
     cout << found << " " << tracer.getRunTime() << endl;
     tracer.startTime();
     found = 0;
-    for (int i = 0; i < total_count; i += DEFAULT_KEY_LENGTH) {
+    for (int i = 0; i < total_count; i++) {
         found += (0 == level_delete(levelHash, &uniques[i * DEFAULT_KEY_LENGTH]));
     }
     cout << found << " " << tracer.getRunTime() << endl;
