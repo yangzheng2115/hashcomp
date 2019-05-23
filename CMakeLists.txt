@@ -43,6 +43,8 @@ endif ()
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(PTHREAD -lpthread)
     set(MLIB -lm)
+    set(AIO -laio)
+    set(UUID -luuid)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration")
 else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wincompatible-pointer-types -Wint-conversion")
@@ -55,6 +57,11 @@ set(LH_LIBS
         )
 
 set(FH_LIBS
+        src/faster/misc/address.cc
+        src/faster/misc/lss_allocator.cc
+        src/faster/misc/thread.cc
+        src/faster/io/file_linux.cc
+        #[[src/faster/io/file_windows.cc]]
         )
 
 option(WITH_LH_TESTS "build with lhests" ON)
@@ -94,5 +101,5 @@ foreach (sourcefile ${HF_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${LTBB} ${AIO} ${UUID})
 endforeach (sourcefile ${FH_TESTS_EXES})

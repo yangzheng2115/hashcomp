@@ -144,7 +144,7 @@ namespace std {
 }
 
 namespace FASTER {
-    namespace core {
+    namespace misc {
 
 /// Atomic (logical) address.
         class AtomicAddress {

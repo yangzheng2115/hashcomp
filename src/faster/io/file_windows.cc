@@ -6,7 +6,7 @@
 #include <sstream>
 #include "file.h"
 
-using namespace FASTER::core;
+using namespace FASTER::io;
 
 namespace FASTER {
     namespace io {

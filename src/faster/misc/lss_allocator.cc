@@ -39,7 +39,7 @@ namespace FASTER {
                 if (allocations == old_state.frees + 1) {
                     // We were the last to free a block inside this segment, so we must free it.
                     this->~SegmentAllocator();
-                    aligned_free(this);
+                    faster_aligned_free(this);
                 }
             }
 
@@ -50,7 +50,7 @@ namespace FASTER {
                 if (old_state.allocations == old_state.frees + 1) {
                     // We were the last to free a block inside this segment, so we must free it.
                     this->~SegmentAllocator();
-                    aligned_free(this);
+                    faster_aligned_free(this);
                 }
             }
 
