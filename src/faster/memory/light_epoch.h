@@ -150,8 +150,8 @@ namespace FASTER {
             void Initialize(uint32_t size) {
                 num_entries_ = size;
                 // do cache-line alignment
-                table_ = reinterpret_cast<Entry *>(aligned_alloc(Constants::kCacheLineBytes,
-                                                                 (size + 2) * sizeof(Entry)));
+                table_ = reinterpret_cast<Entry *>(faster_aligned_alloc(Constants::kCacheLineBytes,
+                                                                        (size + 2) * sizeof(Entry)));
                 new(table_) Entry[size + 2];
                 current_epoch = 1;
                 safe_to_reclaim_epoch = 0;
@@ -162,7 +162,7 @@ namespace FASTER {
             }
 
             void Uninitialize() {
-                aligned_free(table_);
+                faster_aligned_free(table_);
                 table_ = nullptr;
                 num_entries_ = 0;
                 current_epoch = 1;

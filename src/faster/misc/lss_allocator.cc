@@ -56,8 +56,8 @@ namespace FASTER {
 
             void *ThreadAllocator::Allocate(uint32_t size) {
                 if (!segment_allocator_) {
-                    segment_allocator_ = reinterpret_cast<SegmentAllocator *>(aligned_alloc(kCacheLineSize,
-                                                                                            sizeof(SegmentAllocator)));
+                    segment_allocator_ = reinterpret_cast<SegmentAllocator *>(faster_aligned_alloc(kCacheLineSize,
+                                                                                                   sizeof(SegmentAllocator)));
                     if (!segment_allocator_) {
                         return nullptr;
                     }
@@ -94,8 +94,8 @@ namespace FASTER {
 
             void *ThreadAllocator::AllocateAligned(uint32_t size, uint32_t alignment) {
                 if (!segment_allocator_) {
-                    segment_allocator_ = reinterpret_cast<SegmentAllocator *>(aligned_alloc(kCacheLineSize,
-                                                                                            sizeof(SegmentAllocator)));
+                    segment_allocator_ = reinterpret_cast<SegmentAllocator *>(faster_aligned_alloc(kCacheLineSize,
+                                                                                                   sizeof(SegmentAllocator)));
                     if (!segment_allocator_) {
                         return nullptr;
                     }

@@ -316,7 +316,7 @@ namespace FASTER {
                 if (pages_) {
                     for (uint32_t idx = 0; idx < buffer_size_; ++idx) {
                         if (pages_[idx]) {
-                            aligned_free(pages_[idx]);
+                            faster_aligned_free(pages_[idx]);
                         }
                     }
                     delete[] pages_;
@@ -579,7 +579,7 @@ namespace FASTER {
         inline void PersistentMemoryMalloc<D>::AllocatePage(uint32_t index) {
             index = index % buffer_size_;
             assert(pages_[index] == nullptr);
-            pages_[index] = reinterpret_cast<uint8_t *>(aligned_alloc(sector_size, kPageSize));;
+            pages_[index] = reinterpret_cast<uint8_t *>(faster_aligned_alloc(sector_size, kPageSize));;
             std::memset(pages_[index], 0, kPageSize);
 
             // Mark the page as accessible.

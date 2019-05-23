@@ -14,7 +14,7 @@ namespace FASTER {
 
 /// Windows and standard C++/Linux have incompatible implementations of aligned malloc(). (Windows
 /// defines a corresponding aligned free(), while Linux relies on the ordinary free().)
-        inline void *aligned_alloc(size_t alignment, size_t size) {
+        inline void *faster_aligned_alloc(size_t alignment, size_t size) {
 #ifdef _WIN32
             return _aligned_malloc(size, alignment);
 #else
@@ -22,7 +22,7 @@ namespace FASTER {
 #endif
         }
 
-        inline void aligned_free(void *ptr) {
+        inline void faster_aligned_free(void *ptr) {
 #ifdef _WIN32
             _aligned_free(ptr);
 #else

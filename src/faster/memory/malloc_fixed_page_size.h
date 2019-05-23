@@ -198,7 +198,7 @@ namespace FASTER {
                         page_t *page = arr->pages()[idx].load(std::memory_order_acquire);
                         if (page) {
                             page->~FixedPage();
-                            aligned_free(page);
+                            faster_aligned_free(page);
                         }
                     }
                 }
@@ -224,14 +224,14 @@ namespace FASTER {
 
             inline page_t *AddPage(uint64_t page_idx) {
                 assert(page_idx < size);
-                void *buffer = aligned_alloc(alignment, sizeof(page_t));
+                void *buffer = faster_aligned_alloc(alignment, sizeof(page_t));
                 page_t *new_page = new(buffer) page_t{};
                 page_t *expected = nullptr;
                 if (pages()[page_idx].compare_exchange_strong(expected, new_page, std::memory_order_release)) {
                     return new_page;
                 } else {
                     new_page->~page_t();
-                    aligned_free(new_page);
+                    faster_aligned_free(new_page);
                     return expected;
                 }
             }

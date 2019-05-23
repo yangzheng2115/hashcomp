@@ -107,7 +107,7 @@ namespace FASTER {
 
             ~CheckpointLocks() {
                 if (locks_) {
-                    aligned_free(locks_);
+                    faster_aligned_free(locks_);
                 }
             }
 
@@ -115,11 +115,12 @@ namespace FASTER {
                 assert(size < INT32_MAX);
                 assert(Utility::IsPowerOfTwo(size));
                 if (locks_) {
-                    aligned_free(locks_);
+                    faster_aligned_free(locks_);
                 }
                 size_ = size;
-                locks_ = reinterpret_cast<AtomicCheckpointLock *>(aligned_alloc(Constants::kCacheLineBytes,
-                                                                                size_ * sizeof(AtomicCheckpointLock)));
+                locks_ = reinterpret_cast<AtomicCheckpointLock *>(faster_aligned_alloc(Constants::kCacheLineBytes,
+                                                                                       size_ *
+                                                                                       sizeof(AtomicCheckpointLock)));
                 std::memset(locks_, 0, size_ * sizeof(AtomicCheckpointLock));
             }
 
@@ -131,7 +132,7 @@ namespace FASTER {
                   assert(!locks_[idx].new_locked());
                 }
 #endif
-                aligned_free(locks_);
+                faster_aligned_free(locks_);
                 size_ = 0;
                 locks_ = nullptr;
             }

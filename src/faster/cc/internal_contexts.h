@@ -14,6 +14,7 @@
 #include "../misc/guid.h"
 #include "../misc/thread.h"
 #include "../io/native_buffer_pool.h"
+#include "../io/async_result_types.h"
 #include "../core/hash_bucket.h"
 #include "../core/record.h"
 #include "state_transitions.h"
@@ -135,7 +136,7 @@ namespace FASTER {
             typedef RC read_context_t;
             typedef typename read_context_t::key_t key_t;
             typedef typename read_context_t::value_t value_t;
-            typedef Record<key_t, value_t> record_t;
+            typedef Record <key_t, value_t> record_t;
 
             PendingReadContext(read_context_t &caller_context_, AsyncCallback caller_callback_)
                     : AsyncPendingReadContext<key_t>(caller_context_, caller_callback_) {
@@ -210,7 +211,7 @@ namespace FASTER {
             typedef UC upsert_context_t;
             typedef typename upsert_context_t::key_t key_t;
             typedef typename upsert_context_t::value_t value_t;
-            typedef Record<key_t, value_t> record_t;
+            typedef Record <key_t, value_t> record_t;
 
             PendingUpsertContext(upsert_context_t &caller_context_, AsyncCallback caller_callback_)
                     : AsyncPendingUpsertContext<key_t>(caller_context_, caller_callback_) {
@@ -293,7 +294,7 @@ namespace FASTER {
             typedef MC rmw_context_t;
             typedef typename rmw_context_t::key_t key_t;
             typedef typename rmw_context_t::value_t value_t;
-            typedef Record<key_t, value_t> record_t;
+            typedef Record <key_t, value_t> record_t;
 
             PendingRmwContext(rmw_context_t &caller_context_, AsyncCallback caller_callback_)
                     : AsyncPendingRmwContext<key_t>(caller_context_, caller_callback_) {
@@ -349,7 +350,7 @@ namespace FASTER {
             }
         };
 
-        class AsyncIOContext;
+        //class AsyncIOContext;
 
 /// Per-thread execution context. (Just the stuff that's checkpointed to disk.)
         struct PersistentExecContext {

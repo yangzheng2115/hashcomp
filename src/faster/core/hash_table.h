@@ -28,7 +28,7 @@ namespace FASTER {
 
             ~InternalHashTable() {
                 if (buckets_) {
-                    aligned_free(buckets_);
+                    faster_aligned_free(buckets_);
                 }
             }
 
@@ -40,10 +40,10 @@ namespace FASTER {
                 if (size_ != new_size) {
                     size_ = new_size;
                     if (buckets_) {
-                        aligned_free(buckets_);
+                        faster_aligned_free(buckets_);
                     }
-                    buckets_ = reinterpret_cast<HashBucket *>(aligned_alloc(alignment,
-                                                                            size_ * sizeof(HashBucket)));
+                    buckets_ = reinterpret_cast<HashBucket *>(faster_aligned_alloc(alignment,
+                                                                                   size_ * sizeof(HashBucket)));
                 }
                 std::memset(buckets_, 0, size_ * sizeof(HashBucket));
                 assert(pending_checkpoint_writes_ == 0);
@@ -56,7 +56,7 @@ namespace FASTER {
 
             inline void Uninitialize() {
                 if (buckets_) {
-                    aligned_free(buckets_);
+                    faster_aligned_free(buckets_);
                     buckets_ = nullptr;
                 }
                 size_ = 0;

@@ -66,7 +66,7 @@ namespace FASTER {
         void unique_ptr_aligned_deleter(T *p) {
             auto q = const_cast<remove_const_t<T> *>(p);
             q->~T();
-            aligned_free(q);
+            faster_aligned_free(q);
         }
 
         template<typename T>
@@ -87,7 +87,7 @@ namespace FASTER {
 
         template<typename T>
         aligned_unique_ptr_t<T> alloc_aligned(size_t alignment, size_t size) {
-            return make_aligned_unique_ptr<T>(reinterpret_cast<T *>(aligned_alloc(alignment, size)));
+            return make_aligned_unique_ptr<T>(reinterpret_cast<T *>(faster_aligned_alloc(alignment, size)));
         }
 
 /// alloc_context(): allocate a small chunk of memory for a callback context.
