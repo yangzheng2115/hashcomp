@@ -5,8 +5,8 @@
 
 #include <atomic>
 #include <cstdint>
-#include "address.h"
-#include "async.h"
+#include "../misc/address.h"
+#include "../misc/async.h"
 #include "native_buffer_pool.h"
 
 #ifdef _WIN32
@@ -16,8 +16,10 @@ template <typename T>
 using concurrent_queue = concurrency::concurrent_queue<T>;
 #endif
 
+using namespace FASTER::misc;
+
 namespace FASTER {
-    namespace misc {
+    namespace io {
 
         class AsyncIOContext : public IAsyncContext {
         public:

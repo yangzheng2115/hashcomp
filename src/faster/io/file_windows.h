@@ -17,6 +17,8 @@
 #include "../misc/status.h"
 #include "file_common.h"
 
+using namespace FASTER::misc;
+
 /// Windows file routines.
 
 namespace FASTER {

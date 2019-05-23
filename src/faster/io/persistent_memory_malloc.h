@@ -10,14 +10,22 @@
 #include <mutex>
 #include <thread>
 
-#include "device/file_system_disk.h"
-#include "address.h"
-#include "async_result_types.h"
-#include "gc_state.h"
-#include "light_epoch.h"
-#include "native_buffer_pool.h"
-#include "recovery_status.h"
-#include "status.h"
+#include "file_system_disk.h"
+#include "../misc/address.h"
+#include "../misc/status.h"
+#include "../memory/gc_state.h"
+#include "../memory/light_epoch.h"
+#include "../io/native_buffer_pool.h"
+#include "../io/async_result_types.h"
+#include "../cc/recovery_status.h"
+
+using namespace FASTER::misc;
+
+using namespace FASTER::memory;
+
+using namespace FASTER::io;
+
+using namespace FASTER::cc;
 
 namespace FASTER {
     namespace io {
@@ -672,7 +680,7 @@ namespace FASTER {
 
         template<class D>
         void PersistentMemoryMalloc<D>::OnPagesClosed(IAsyncContext *ctxt) {
-            CallbackContext <OnPagesClosed_Context> context{ctxt};
+            CallbackContext<OnPagesClosed_Context> context{ctxt};
             Address old_safe_head_address;
             if (context->allocator->MonotonicUpdate(context->allocator->safe_head_address,
                                                     context->new_safe_head_address,
@@ -698,7 +706,7 @@ namespace FASTER {
 
         template<class D>
         void PersistentMemoryMalloc<D>::OnPagesMarkedReadOnly(IAsyncContext *ctxt) {
-            CallbackContext <OnPagesMarkedReadOnly_Context> context{ctxt};
+            CallbackContext<OnPagesMarkedReadOnly_Context> context{ctxt};
             Address old_safe_read_only_address;
             if (context->allocator->MonotonicUpdate(context->allocator->safe_read_only_address,
                                                     context->new_safe_read_only_address,
@@ -734,7 +742,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 if (result != Status::Ok) {
                     fprintf(stderr, "AsyncFlushPages(), error: %u\n", static_cast<uint8_t>(result));
                 }
@@ -807,7 +815,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 if (result != Status::Ok) {
                     fprintf(stderr, "AsyncFlushPagesToFile(), error: %u\n", static_cast<uint8_t>(result));
                 }
@@ -872,7 +880,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 if (result != Status::Ok) {
                     fprintf(stderr, "Error: %u\n", static_cast<uint8_t>(result));
                 }
@@ -931,7 +939,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 if (result != Status::Ok) {
                     fprintf(stderr, "Error: %u\n", static_cast<uint8_t>(result));
                 }

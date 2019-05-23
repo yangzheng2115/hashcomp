@@ -7,10 +7,14 @@
 #include <cstdint>
 #include <string>
 
-#include "../misc/gc_state.h"
-#include "../misc/light_epoch.h"
+#include "../memory/gc_state.h"
+#include "../memory/light_epoch.h"
 #include "../misc/guid.h"
 #include "file.h"
+
+using namespace FASTER::misc;
+
+using namespace FASTER::memory;
 
 namespace FASTER {
     namespace io {

@@ -6,7 +6,7 @@
 #include <cstdint>
 
 namespace FASTER {
-    namespace core {
+    namespace misc {
 
         struct Constants {
             /// Size of cache line in bytes

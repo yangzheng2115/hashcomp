@@ -8,7 +8,7 @@
 #include "../misc/async.h"
 #include "../misc/lss_allocator.h"
 
-using namespace FASTER::core;
+using namespace FASTER::misc;
 
 namespace FASTER {
     namespace io {

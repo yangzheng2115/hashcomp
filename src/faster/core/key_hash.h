@@ -4,23 +4,22 @@
 #pragma once
 
 #include <cstdint>
-#include "utility.h"
+#include "../misc/utility.h"
+
+using namespace FASTER::misc;
 
 namespace FASTER {
     namespace core {
 
 /// Hash of a key is 8 bytes, compatible with hash bucket entry.
         struct KeyHash {
-            KeyHash()
-                    : control_{0} {
+            KeyHash() : control_{0} {
             }
 
-            explicit KeyHash(uint64_t code)
-                    : control_{code} {
+            explicit KeyHash(uint64_t code) : control_{code} {
             }
 
-            KeyHash(const KeyHash &other)
-                    : control_{other.control_} {
+            KeyHash(const KeyHash &other) : control_{other.control_} {
             }
 
             KeyHash &operator=(const KeyHash &other) {

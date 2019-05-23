@@ -7,8 +7,10 @@
 #include <cstdint>
 #include <cstring>
 
-#include "alloc.h"
-#include "utility.h"
+#include "../misc/alloc.h"
+#include "../misc/utility.h"
+
+using namespace FASTER::misc;
 
 #ifdef _WIN32
 #include <intrin.h>

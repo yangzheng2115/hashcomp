@@ -8,9 +8,13 @@
 #include <cstdint>
 #include <thread>
 
-#include "address.h"
-#include "constants.h"
-#include "malloc_fixed_page_size.h"
+#include "../misc/address.h"
+#include "../misc/constants.h"
+#include "../memory/malloc_fixed_page_size.h"
+
+using namespace FASTER::misc;
+
+using namespace FASTER::memory;
 
 namespace FASTER {
     namespace core {

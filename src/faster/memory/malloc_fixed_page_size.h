@@ -10,8 +10,10 @@
 #include <deque>
 #include <thread>
 
-#include "alloc.h"
+#include "../misc/alloc.h"
 #include "light_epoch.h"
+
+using namespace FASTER::misc;
 
 namespace FASTER {
     namespace memory {
@@ -400,7 +402,7 @@ namespace FASTER {
             constexpr uint32_t kWriteSize = page_t::kPageSize * sizeof(item_t);
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <AsyncIoContext> context{ctxt};
+                CallbackContext<AsyncIoContext> context{ctxt};
                 if (result != Status::Ok) {
                     context->allocator->checkpoint_failed_ = true;
                 }
@@ -456,7 +458,7 @@ namespace FASTER {
             constexpr uint64_t kReadSize = page_t::kPageSize * sizeof(item_t);
 
             auto callback = [](IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
-                CallbackContext <AsyncIoContext> context{ctxt};
+                CallbackContext<AsyncIoContext> context{ctxt};
                 if (result != Status::Ok) {
                     context->allocator->recover_failed_ = true;
                 }
@@ -541,7 +543,7 @@ namespace FASTER {
             };
 
             auto delete_callback = [](IAsyncContext *ctxt) {
-                CallbackContext <Delete_Context> context{ctxt};
+                CallbackContext<Delete_Context> context{ctxt};
                 array_t::Delete(context->arr, false);
             };
 

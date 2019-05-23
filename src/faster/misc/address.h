@@ -138,8 +138,7 @@ namespace FASTER {
 /// Implement std::min() for Address type.
 namespace std {
     template<>
-    inline const FASTER::core::Address &min(const FASTER::core::Address &a,
-                                            const FASTER::core::Address &b) {
+    inline const FASTER::misc::Address &min(const FASTER::misc::Address &a, const FASTER::misc::Address &b) {
         return (b < a) ? b : a;
     }
 }

@@ -15,6 +15,8 @@
 #include "../misc/status.h"
 #include "file_common.h"
 
+using namespace FASTER::misc;
+
 namespace FASTER {
     namespace io {
 

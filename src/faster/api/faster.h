@@ -11,7 +11,6 @@
 #include <cstring>
 #include <type_traits>
 
-#include "device/file_system_disk.h"
 
 #include "../misc/alloc.h"
 #include "../misc/constants.h"
@@ -27,11 +26,22 @@
 #include "../memory/grow_state.h"
 #include "../core/hash_table.h"
 #include "../core/key_hash.h"
+#include "../core/record.h"
 #include "../memory/malloc_fixed_page_size.h"
 #include "../io/persistent_memory_malloc.h"
-#include "../core/record.h"
+#include "../io/file_system_disk.h"
 
 using namespace std::chrono_literals;
+
+using namespace FASTER::misc;
+
+using namespace FASTER::cc;
+
+using namespace FASTER::memory;
+
+using namespace FASTER::core;
+
+using namespace FASTER::io;
 
 /// The FASTER key-value store, and related classes.
 
@@ -85,13 +95,13 @@ namespace FASTER {
             typedef typename D::file_t file_t;
             typedef typename D::log_file_t log_file_t;
 
-            typedef PersistentMemoryMalloc <disk_t> hlog_t;
+            typedef PersistentMemoryMalloc<disk_t> hlog_t;
 
             /// Contexts that have been deep-copied, for async continuations, and must be accessed via
             /// virtual function calls.
-            typedef AsyncPendingReadContext <key_t> async_pending_read_context_t;
-            typedef AsyncPendingUpsertContext <key_t> async_pending_upsert_context_t;
-            typedef AsyncPendingRmwContext <key_t> async_pending_rmw_context_t;
+            typedef AsyncPendingReadContext<key_t> async_pending_read_context_t;
+            typedef AsyncPendingUpsertContext<key_t> async_pending_upsert_context_t;
+            typedef AsyncPendingRmwContext<key_t> async_pending_rmw_context_t;
 
             FasterKv(uint64_t table_size, uint64_t log_size, const std::string &filename,
                      double log_mutable_fraction = 0.9)
@@ -169,9 +179,9 @@ namespace FASTER {
             }
 
         private:
-            typedef Record <key_t, value_t> record_t;
+            typedef Record<key_t, value_t> record_t;
 
-            typedef PendingContext <key_t> pending_context_t;
+            typedef PendingContext<key_t> pending_context_t;
 
             template<class C>
             inline OperationStatus InternalRead(C &pending_context) const;
@@ -318,10 +328,10 @@ namespace FASTER {
             uint64_t min_table_size_;
 
             // Allocator for the hash buckets that don't fit in the hash table.
-            MallocFixedPageSize <HashBucket, disk_t> overflow_buckets_allocator_[2];
+            MallocFixedPageSize<HashBucket, disk_t> overflow_buckets_allocator_[2];
 
             // An array of size two, that contains the old and new versions of the hash-table
-            InternalHashTable <disk_t> state_[2];
+            InternalHashTable<disk_t> state_[2];
 
             CheckpointLocks checkpoint_locks_;
 
@@ -330,7 +340,7 @@ namespace FASTER {
             AtomicSystemState system_state_;
 
             /// Checkpoint/recovery state.
-            CheckpointState <file_t> checkpoint_;
+            CheckpointState<file_t> checkpoint_;
             /// Garbage collection state.
             GcState gc_;
             /// Grow (hash table) state.
@@ -578,7 +588,7 @@ namespace FASTER {
         inline Status FasterKv<K, V, D>::Read(RC &context, AsyncCallback callback,
                                               uint64_t monotonic_serial_num) {
             typedef RC read_context_t;
-            typedef PendingReadContext <RC> pending_read_context_t;
+            typedef PendingReadContext<RC> pending_read_context_t;
             static_assert(std::is_base_of<value_t, typename read_context_t::value_t>::value,
                           "value_t is not a base class of read_context_t::value_t");
             static_assert(alignof(value_t) == alignof(typename read_context_t::value_t),
@@ -605,7 +615,7 @@ namespace FASTER {
         inline Status FasterKv<K, V, D>::Upsert(UC &context, AsyncCallback callback,
                                                 uint64_t monotonic_serial_num) {
             typedef UC upsert_context_t;
-            typedef PendingUpsertContext <UC> pending_upsert_context_t;
+            typedef PendingUpsertContext<UC> pending_upsert_context_t;
             static_assert(std::is_base_of<value_t, typename upsert_context_t::value_t>::value,
                           "value_t is not a base class of upsert_context_t::value_t");
             static_assert(alignof(value_t) == alignof(typename upsert_context_t::value_t),
@@ -630,7 +640,7 @@ namespace FASTER {
         inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback,
                                              uint64_t monotonic_serial_num) {
             typedef MC rmw_context_t;
-            typedef PendingRmwContext <MC> pending_rmw_context_t;
+            typedef PendingRmwContext<MC> pending_rmw_context_t;
             static_assert(std::is_base_of<value_t, typename rmw_context_t::value_t>::value,
                           "value_t is not a base class of rmw_context_t::value_t");
             static_assert(alignof(value_t) == alignof(typename rmw_context_t::value_t),
@@ -682,8 +692,8 @@ namespace FASTER {
             // Clear this thread's I/O response queue. (Does not clear I/Os issued by this thread that have
             // not yet completed.)
             while (context.io_responses.try_pop(ctxt)) {
-                CallbackContext <AsyncIOContext> io_context{ctxt};
-                CallbackContext <pending_context_t> pending_context{io_context->caller_context};
+                CallbackContext<AsyncIOContext> io_context{ctxt};
+                CallbackContext<pending_context_t> pending_context{io_context->caller_context};
                 // This I/O is no longer pending, since we popped its response off the queue.
                 auto pending_io = context.pending_ios.find(io_context->io_id);
                 assert(pending_io != context.pending_ios.end());
@@ -718,7 +728,7 @@ namespace FASTER {
             // only once.
             size_t size = context.retry_requests.size();
             for (size_t idx = 0; idx < size; ++idx) {
-                CallbackContext <pending_context_t> pending_context{context.retry_requests.front()};
+                CallbackContext<pending_context_t> pending_context{context.retry_requests.front()};
                 context.retry_requests.pop_front();
                 // Issue retry command
                 OperationStatus internal_status;
@@ -1340,7 +1350,7 @@ namespace FASTER {
         template<class K, class V, class D>
         void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status result,
                                                          size_t bytes_transferred) {
-            CallbackContext <AsyncIOContext> context{ctxt};
+            CallbackContext<AsyncIOContext> context{ctxt};
             faster_t *faster = reinterpret_cast<faster_t *>(context->faster);
             /// Context stack is: AsyncIOContext, PendingContext.
             pending_context_t *pending_context = static_cast<pending_context_t *>(context->caller_context);
@@ -1726,7 +1736,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 result = context->hlog->AsyncReadPagesFromLog(context->page, 1, *context->recovery_status);
             };
 
@@ -1801,7 +1811,7 @@ namespace FASTER {
             };
 
             auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext <Context> context{ctxt};
+                CallbackContext<Context> context{ctxt};
                 result = context->hlog->AsyncReadPagesFromSnapshot(*context->file,
                                                                    context->file_start_page, context->page, 1,
                                                                    *context->recovery_status);

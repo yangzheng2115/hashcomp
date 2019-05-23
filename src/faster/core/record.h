@@ -5,8 +5,10 @@
 
 #include <cassert>
 #include <cstdint>
-#include "address.h"
-#include "auto_ptr.h"
+#include "../misc/address.h"
+#include "../misc/auto_ptr.h"
+
+using namespace FASTER::misc;
 
 namespace FASTER {
     namespace core {

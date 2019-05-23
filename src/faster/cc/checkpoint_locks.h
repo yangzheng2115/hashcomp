@@ -8,9 +8,13 @@
 #include <cstdint>
 #include <thread>
 
-#include "alloc.h"
-#include "constants.h"
-#include "key_hash.h"
+#include "../misc/alloc.h"
+#include "../misc/constants.h"
+#include "../core/key_hash.h"
+
+using namespace FASTER::misc;
+
+using namespace FASTER::core;
 
 namespace FASTER {
     namespace cc {

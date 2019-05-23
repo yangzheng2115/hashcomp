@@ -21,6 +21,8 @@ include_directories("src/faster/misc")
 include_directories("src/faster/io")
 include_directories("src/faster/cc")
 include_directories("src/faster/core")
+include_directories("src/faster/memory")
+include_directories("src/faster/api")
 
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     find_package(Boost 1.50.0 REQUIRED COMPONENTS date_time filesystem iostreams)

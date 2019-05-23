@@ -11,11 +11,13 @@
 #include <memory>
 #include <thread>
 
-#include "alloc.h"
-#include "async.h"
-#include "constants.h"
-#include "thread.h"
-#include "utility.h"
+#include "../misc/alloc.h"
+#include "../misc/async.h"
+#include "../misc/constants.h"
+#include "../misc/thread.h"
+#include "../misc/utility.h"
+
+using namespace FASTER::misc;
 
 namespace FASTER {
     namespace memory {

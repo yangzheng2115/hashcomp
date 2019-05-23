@@ -6,11 +6,15 @@
 #include <atomic>
 #include <cstdint>
 #include <unordered_map>
-#include "address.h"
-#include "guid.h"
-#include "malloc_fixed_page_size.h"
-#include "status.h"
-#include "thread.h"
+#include "../misc/address.h"
+#include "../misc/guid.h"
+#include "../misc/status.h"
+#include "../misc/thread.h"
+#include "../memory/malloc_fixed_page_size.h"
+
+using namespace FASTER::misc;
+
+using namespace FASTER::memory;
 
 namespace FASTER {
     namespace cc {

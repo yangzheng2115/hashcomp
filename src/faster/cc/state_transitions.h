@@ -5,7 +5,9 @@
 
 #include <atomic>
 #include <cstdint>
-#include "phase.h"
+#include "../memory/phase.h"
+
+using namespace FASTER::memory;
 
 namespace FASTER {
     namespace cc {

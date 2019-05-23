@@ -14,6 +14,10 @@
 #include "../misc/utility.h"
 #include "file.h"
 
+using namespace FASTER::misc;
+
+using namespace FASTER::memory;
+
 /// Wrapper that exposes files to FASTER. Encapsulates segmented files, etc.
 
 namespace FASTER {
@@ -33,7 +37,7 @@ namespace FASTER {
                     : file_{}, file_options_{} {
             }
 
-            FileSystemFile(const std::string &filename, const environment::FileOptions &file_options)
+            FileSystemFile(const std::string &filename, const io::FileOptions &file_options)
                     : file_{filename}, file_options_{file_options} {
             }
 
@@ -50,8 +54,7 @@ namespace FASTER {
             }
 
             Status Open(handler_t *handler) {
-                return file_.Open(FASTER::environment::FileCreateDisposition::OpenOrCreate, file_options_,
-                                  handler, nullptr);
+                return file_.Open(FASTER::io::FileCreateDisposition::OpenOrCreate, file_options_, handler, nullptr);
             }
 
             Status Close() {
@@ -85,7 +88,7 @@ namespace FASTER {
 
         private:
             file_t file_;
-            environment::FileOptions file_options_;
+            io::FileOptions file_options_;
         };
 
 /// Manages a bundle of segment files.
@@ -97,7 +100,7 @@ namespace FASTER {
             typedef FileSystemSegmentBundle<handler_t> bundle_t;
 
             FileSystemSegmentBundle(const std::string &filename,
-                                    const environment::FileOptions &file_options, handler_t *handler,
+                                    const io::FileOptions &file_options, handler_t *handler,
                                     uint64_t begin_segment_, uint64_t end_segment_)
                     : filename_{filename}, file_options_{file_options}, begin_segment{begin_segment_},
                       end_segment{end_segment_}, owner_{true} {
@@ -196,7 +199,7 @@ namespace FASTER {
             const uint64_t end_segment;
         private:
             std::string filename_;
-            environment::FileOptions file_options_;
+            io::FileOptions file_options_;
             bool owner_;
         };
 
@@ -211,7 +214,7 @@ namespace FASTER {
             static_assert(Utility::IsPowerOfTwo(S), "template parameter S is not a power of two!");
 
             FileSystemSegmentedFile(const std::string &filename,
-                                    const environment::FileOptions &file_options, LightEpoch *epoch)
+                                    const io::FileOptions &file_options, LightEpoch *epoch)
                     : begin_segment_{0}, files_{nullptr}, handler_{nullptr}, filename_{filename},
                       file_options_{file_options}, epoch_{epoch} {
             }
@@ -413,7 +416,7 @@ namespace FASTER {
             std::atomic<bundle_t *> files_;
             handler_t *handler_;
             std::string filename_;
-            environment::FileOptions file_options_;
+            io::FileOptions file_options_;
             LightEpoch *epoch_;
             std::mutex mutex_;
         };
@@ -427,8 +430,8 @@ namespace FASTER {
 
         private:
             static std::string NormalizePath(std::string root_path) {
-                if (root_path.empty() || root_path.back() != FASTER::environment::kPathSeparator[0]) {
-                    root_path += FASTER::environment::kPathSeparator;
+                if (root_path.empty() || root_path.back() != FASTER::io::kPathSeparator[0]) {
+                    root_path += FASTER::io::kPathSeparator;
                 }
                 return root_path;
             }
@@ -458,9 +461,9 @@ namespace FASTER {
 
             std::string relative_index_checkpoint_path(const Guid &token) const {
                 std::string retval = "index-checkpoints";
-                retval += FASTER::environment::kPathSeparator;
+                retval += FASTER::io::kPathSeparator;
                 retval += token.ToString();
-                retval += FASTER::environment::kPathSeparator;
+                retval += FASTER::io::kPathSeparator;
                 return retval;
             }
 
@@ -470,9 +473,9 @@ namespace FASTER {
 
             std::string relative_cpr_checkpoint_path(const Guid &token) const {
                 std::string retval = "cpr-checkpoints";
-                retval += FASTER::environment::kPathSeparator;
+                retval += FASTER::io::kPathSeparator;
                 retval += token.ToString();
-                retval += FASTER::environment::kPathSeparator;
+                retval += FASTER::io::kPathSeparator;
                 return retval;
             }
 
@@ -519,7 +522,7 @@ namespace FASTER {
             std::string root_path_;
             handler_t handler_;
 
-            environment::FileOptions default_file_options_;
+            io::FileOptions default_file_options_;
 
             /// Store the log (contains all records).
             log_file_t log_;

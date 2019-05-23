@@ -145,8 +145,8 @@ namespace FASTER {
 /// Implement std::hash<> for GUIDs.
 namespace std {
     template<>
-    struct hash<FASTER::core::Guid> {
-        size_t operator()(const FASTER::core::Guid &val) const {
+    struct hash<FASTER::misc::Guid> {
+        size_t operator()(const FASTER::misc::Guid &val) const {
             return val.GetHashCode();
         }
     };
