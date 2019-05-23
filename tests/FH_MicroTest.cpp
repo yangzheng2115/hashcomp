@@ -12,9 +12,9 @@
 #define DEFAULT_KEYS_RANGE (1 << 2)
 
 #define DEFAULT_STR_LENGTH 256
-#define DEFAULT_KEY_LENGTH 8
+//#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        1
+#define TEST_LOOKUP        0
 
 #define DEFAULT_STORE_BASE 100000000
 
@@ -81,8 +81,6 @@ void simpleInsert() {
 void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
-    Tracer tracer;
-    tracer.startTime();
     for (int i = 0; i < total_count / thread_number; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
@@ -91,42 +89,40 @@ void *insertWorker(void *args) {
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
-    long elipsed = tracer.getRunTime();
-    //__sync_fetch_and_add(&exists, fail);
-    __sync_fetch_and_add(&total_time, elipsed);
-    __sync_fetch_and_add(&failure, inserted);
+    __sync_fetch_and_add(&exists, inserted);
 }
 
 void *measureWorker(void *args) {
-//    Tracer tracer;
-//    tracer.startTime();
-//    struct target *work = (struct target *) args;
-//    uint64_t hit = 0;
-//    uint64_t fail = 0;
-//    uint8_t value[DEFAULT_KEY_LENGTH];
-//    while (stopMeasure.load(memory_order_relaxed) == 0) {
-//        for (int i = work->tid; i < total_count; i += thread_number) {
-//#if TEST_LOOKUP
-//            if (0 == level_query(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], value)) {
-//                hit++;
-//            } else {
-//                fail++;
-//            }
-//#else
-//            if (0 == level_update(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], &loads[i * DEFAULT_KEY_LENGTH])) {
-//                hit++;
-//            } else {
-//                fail++;
-//            }
-//#endif
-//        }
-//    }
-//
-//    long elipsed = tracer.getRunTime();
-//    output[work->tid] << work->tid << " " << elipsed << endl;
-//    __sync_fetch_and_add(&total_time, elipsed);
-//    __sync_fetch_and_add(&success, hit);
-//    __sync_fetch_and_add(&failure, fail);
+    Tracer tracer;
+    tracer.startTime();
+    struct target *work = (struct target *) args;
+    uint64_t hit = 0;
+    while (stopMeasure.load(memory_order_relaxed) == 0) {
+        for (int i = 0; i < total_count; i++) {
+#if TEST_LOOKUP
+            auto callback = [](IAsyncContext *ctxt, Status result) {
+                CallbackContext<ReadContext> context{ctxt};
+            };
+            ReadContext context{loads[i]};
+
+            Status result = store.Read(context, callback, 1);
+            hit++;
+#else
+
+            auto callback = [](IAsyncContext *ctxt, Status result) {
+                CallbackContext<UpsertContext> context{ctxt};
+            };
+            UpsertContext context{loads[i], loads[i]};
+            Status stat = store.Upsert(context, callback, 1);
+            hit++;
+#endif
+        }
+    }
+
+    long elipsed = tracer.getRunTime();
+    output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
+    __sync_fetch_and_add(&total_time, elipsed);
+    __sync_fetch_and_add(&success, hit);
 }
 
 void prepare() {
