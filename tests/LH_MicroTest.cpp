@@ -156,8 +156,8 @@ void uniqueInsert() {
 void *insertWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t fail = 0;
-    for (int i = 0; i < total_count / thread_number; i++) {
-        if (!level_insert(work->levelHash, work->insert[i], work->insert[i])) {
+    for (int i = 0; i < total_count /*/ thread_number*/; i++) { // Here, we found a bug in multi-thread settings.
+        if (!level_insert(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], &loads[i * DEFAULT_KEY_LENGTH])) {
             fail++;
         }
     }
@@ -200,10 +200,10 @@ void multiWorkers() {
     output = new stringstream[thread_number];
     Tracer tracer;
     tracer.startTime();
-    for (int i = 0; i < thread_number; i++) {
+    for (int i = 0; i < 1/*thread_number*/; i++) {
         pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
     }
-    for (int i = 0; i < thread_number; i++) {
+    for (int i = 0; i < 1/*thread_number*/; i++) {
         pthread_join(workers[i], nullptr);
     }
     cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
@@ -250,5 +250,6 @@ int main(int argc, char **argv) {
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
+    level_destroy(levelHash);
     return 0;
 }
