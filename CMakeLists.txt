@@ -23,8 +23,11 @@ include_directories("src/faster/cc")
 include_directories("src/faster/core")
 include_directories("src/faster/memory")
 include_directories("src/faster/api")
+include_directories("src/mhash")
+include_directories("src/mhash/util")
+include_directories("src/mhash/epoch")
 
-if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+if (CMAKE_SYSTEM_NAME MATCHES " Darwin")
     find_package(Boost 1.50.0 REQUIRED COMPONENTS date_time filesystem iostreams)
     include_directories(${Boost_INCLUDE_DIR})
     link_directories(${Boost_LIBRARY_DIR})
@@ -35,7 +38,7 @@ if (NOT CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
     find_package(tbb 1.0 REQUIRED COMPONENTS tbbmalloc tbb tbb_preview)
     if (NOT TBB_FIND_COMPONENTS EQUAL 0)
         message("-- Found TBB at: ${TBB_DIR}")
-        message("--   ${TBB_FIND_COMPONENTS} found at ${TBB_ROOT}")
+        message("-- ${TBB_FIND_COMPONENTS} found at ${TBB_ROOT}")
         set(LTBB "-L${TBB_DIR}/../../ -ltbb")
     endif ()
 endif ()
@@ -64,6 +67,10 @@ set(FH_LIBS
         #[[src/faster/io/file_windows.cc]]
         )
 
+set(MH_LIBS
+        src/mhash/epoch/faster/lss_allocator.cc
+        src/mhash/epoch/faster/thread.cc)
+
 option(WITH_LH_TESTS "build with lhests" ON)
 if (WITH_LH_TESTS)
     set(LH_TEST
@@ -74,6 +81,12 @@ option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
             tests/FH_MicroTest.cpp)
+endif ()
+
+option(WITH_MH_TESTS "build with multi-level hash tests " ON)
+if (WITH_MH_TESTS)
+    set(MH_TEST
+            tests/MH_MicroTest.cpp)
 endif ()
 
 find_package(Threads)
@@ -91,8 +104,8 @@ foreach (sourcefile ${LH_TESTS_EXES})
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${LH_TESTS_EXES})
 
-set(HF_TESTS_EXES ${FH_TEST})
-foreach (sourcefile ${HF_TESTS_EXES})
+set(FH_TESTS_EXES ${FH_TEST})
+foreach (sourcefile ${FH_TESTS_EXES})
     get_filename_component(exename ${sourcefile} NAME_WE)
     add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${FH_LIBS})
     set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
@@ -103,3 +116,16 @@ foreach (sourcefile ${HF_TESTS_EXES})
             )
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${LTBB} ${AIO} ${UUID})
 endforeach (sourcefile ${FH_TESTS_EXES})
+
+set(MF_TESTS_EXES ${MH_TEST})
+foreach (sourcefile ${MF_TESTS_EXES})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${MH_LIBS})
+    set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+            PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+            OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+            )
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+endforeach (sourcefile ${MF_TESTS_EXES})
