@@ -63,9 +63,16 @@ set(FH_LIBS
         src/faster/misc/address.cc
         src/faster/misc/lss_allocator.cc
         src/faster/misc/thread.cc
-        src/faster/io/file_linux.cc
-        #[[src/faster/io/file_windows.cc]]
         )
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(FH_LIBS
+            src/faster/io/file_linux.cc
+            ${FH_LIBS})
+else ()
+    set(FH_LIBS
+            src/faster/io/file_windows.cc
+            ${FH_LIBS})
+endif ()
 
 set(MH_LIBS
         src/mhash/epoch/faster/lss_allocator.cc
