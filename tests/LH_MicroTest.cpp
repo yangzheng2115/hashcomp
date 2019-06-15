@@ -13,7 +13,7 @@
 #define DEFAULT_STR_LENGTH 256
 #define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP 0
+#define TEST_LOOKUP        1
 
 uint8_t *loads;
 
@@ -172,7 +172,7 @@ void *measureWorker(void *args) {
     uint64_t fail = 0;
     uint8_t value[DEFAULT_KEY_LENGTH];
     while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = work->tid; i < total_count; i += thread_number) {
+        for (int i = 0/*work->tid*/; i < total_count; i++ /*+= thread_number*/) {
 #if TEST_LOOKUP
             if (0 == level_query(work->levelHash, &loads[i * DEFAULT_KEY_LENGTH], value)) {
                 hit++;

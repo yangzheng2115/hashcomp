@@ -14,7 +14,7 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        0
+#define TEST_LOOKUP        1
 
 #define DEFAULT_STORE_BASE 100000000
 
@@ -81,7 +81,7 @@ void simpleInsert() {
 void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
-    for (int i = 0; i < total_count / thread_number; i++) {
+    for (int i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
@@ -97,6 +97,7 @@ void *measureWorker(void *args) {
     tracer.startTime();
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
+    uint64_t fail = 0;
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
@@ -106,7 +107,10 @@ void *measureWorker(void *args) {
             ReadContext context{loads[i]};
 
             Status result = store.Read(context, callback, 1);
-            hit++;
+            if (result == Status::Ok)
+                hit++;
+            else
+                fail++;
 #else
 
             auto callback = [](IAsyncContext *ctxt, Status result) {
@@ -123,6 +127,7 @@ void *measureWorker(void *args) {
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
     __sync_fetch_and_add(&total_time, elipsed);
     __sync_fetch_and_add(&success, hit);
+    __sync_fetch_and_add(&failure, fail);
 }
 
 void prepare() {

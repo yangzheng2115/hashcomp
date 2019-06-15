@@ -13,7 +13,7 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        0
+#define TEST_LOOKUP        1
 
 #define DEFAULT_STORE_BASE 100000000
 
@@ -63,7 +63,7 @@ void simpleInsert() {
 void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
-    for (int i = 0; i < total_count / thread_number; i++) {
+    for (int i = 0; i < total_count; i++) {
         mhash->Insert(loads[i], loads[i]);
         inserted++;
     }
@@ -75,13 +75,22 @@ void *measureWorker(void *args) {
     tracer.startTime();
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
+    uint64_t fail = 0;
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
-            mhash->Get(loads[i]);
-            hit++;
+            std::pair<uint64_t, uint64_t> ret = mhash->Get(loads[i]);
+            /*if (ret.second != loads[i]) {
+                sleep(work->tid * 10);
+                cout << "\t" << loads[i] << " " << ret.first << " " << ret.second << endl;
+                //exit(0);
+            }*/
+            if (ret.second == loads[i])
+                hit++;
+            else
+                fail++;
 #else
-            mhash->Insert(loads[i], loads[i]);
+            mhash->Update(loads[i], loads[i]);
             hit++;
 #endif
         }
@@ -91,6 +100,7 @@ void *measureWorker(void *args) {
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
     __sync_fetch_and_add(&total_time, elipsed);
     __sync_fetch_and_add(&success, hit);
+    __sync_fetch_and_add(&failure, fail);
 }
 
 void prepare() {
