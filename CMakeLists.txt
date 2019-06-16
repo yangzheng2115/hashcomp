@@ -26,6 +26,7 @@ include_directories("src/faster/api")
 include_directories("src/mhash")
 include_directories("src/mhash/util")
 include_directories("src/mhash/epoch")
+include_directories("utils")
 
 if (CMAKE_SYSTEM_NAME MATCHES " Darwin")
     find_package(Boost 1.50.0 REQUIRED COMPONENTS date_time filesystem iostreams)
@@ -96,6 +97,12 @@ if (WITH_MH_TESTS)
             tests/MH_MicroTest.cpp)
 endif ()
 
+option(WITH_UTILS "build with utils" ON)
+if (WITH_UTILS)
+    set(UTILS
+            utils/DistributionTool.cpp)
+endif ()
+
 find_package(Threads)
 
 set(LH_TESTS_EXES ${LH_TEST})
@@ -136,3 +143,16 @@ foreach (sourcefile ${MF_TESTS_EXES})
             )
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${MF_TESTS_EXES})
+
+set(UTILS_EXES ${UTILS})
+foreach (sourcefile ${UTILS_EXES})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+    set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+            PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+            OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+            )
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX})
+endforeach (sourcefile ${UTILS_EXES})
