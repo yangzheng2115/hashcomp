@@ -3,7 +3,8 @@
 #include "tracer.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <src/mhash/lock_free_hash_table.h>
+#include <lock_free_hash_table.h>
+#include <concurrent_hash_table.h>
 
 #define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
@@ -15,9 +16,15 @@
 
 #define TEST_LOOKUP        1
 
+#define COUNT_HASH         0
+
 #define DEFAULT_STORE_BASE 100000000
 
+#if COUNT_HASH
+neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 8> *mhash;
+#else
 neatlib::LockFreeHashTable<uint64_t, uint64_t> *mhash;
+#endif
 
 uint64_t *loads;
 
@@ -42,7 +49,11 @@ atomic<int> stopMeasure(0);
 struct target {
     int tid;
     uint64_t *insert;
+#if COUNT_HASH
+    neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 8> *store;
+#else
     neatlib::LockFreeHashTable<uint64_t, uint64_t> *store;
+#endif
 };
 
 pthread_t *workers;
@@ -164,7 +175,11 @@ int main(int argc, char **argv) {
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
     }
-    mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t>(4);
+#if COUNT_HASH
+    mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 8>();
+#else
+    mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t>(thread_number);
+#endif
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
@@ -177,5 +192,6 @@ int main(int argc, char **argv) {
          << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
     finish();
+    //delete mhash;
     return 0;
 }
