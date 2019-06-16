@@ -23,7 +23,7 @@ enum COM {
 
 string TYPES[] = {"READ", "INSERT", "UPDATE", "DELETE"};
 
-vector<pair<string, uint64_t>> orderedCounters(COM com, char *inpath) {
+vector<pair<string, uint64_t>> orderedCounters(COM com, char *inpath, size_t limit = (1 << 32)) {
     unordered_map<string, uint64_t> counters;
     ifstream fin(inpath);
     string line;
@@ -39,10 +39,9 @@ vector<pair<string, uint64_t>> orderedCounters(COM com, char *inpath) {
             } else {
                 counters.insert(make_pair(content, 1));
             }
-            //cout << exists << " " << content << endl;
         }
     }
-    vector<pair<string, uint64_t>> tmp;
+    vector<std::pair<string, uint64_t>> tmp;
     for (auto &e: counters) {
         tmp.push_back(e);
     }
@@ -50,7 +49,7 @@ vector<pair<string, uint64_t>> orderedCounters(COM com, char *inpath) {
          [=](pair<string, uint64_t> &a, pair<string, uint64_t> &b) { return b.second < a.second; });
     vector<pair<string, uint64_t>>::iterator iter = tmp.begin();
     while (iter++ != tmp.end()) {
-        if (iter - tmp.begin() == 1000)
+        if (iter - tmp.begin() == limit)
             break;
         cout << iter->first << " " << iter->second << endl;
     }
@@ -63,9 +62,11 @@ vector<pair<string, uint64_t>> orderedCounters(COM com, char *inpath) {
         cout << (*iter).first << " " << (*iter).second << endl;
     }*/
     cout << counters.size() << "<->" << tmp.size() << endl;
+    fin.close();
+    return tmp;
 }
 
 int main(int argc, char **argv) {
-    char *inpath = argv[1];
-    orderedCounters(READ, inpath);
+    orderedCounters(READ, argv[1], std::atol(argv[2]));
+    return 0;
 }
