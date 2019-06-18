@@ -101,8 +101,10 @@ void *measureWorker(void *args) {
             else
                 fail++;
 #else
-            mhash->Update(loads[i], loads[i]);
-            hit++;
+            if (mhash->Update(loads[i], loads[i]))
+                hit++;
+            else
+                fail++;
 #endif
         }
     }
