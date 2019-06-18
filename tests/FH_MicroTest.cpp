@@ -14,7 +14,7 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        1
+#define TEST_LOOKUP        0
 
 #define DEFAULT_STORE_BASE 100000000
 
@@ -118,7 +118,10 @@ void *measureWorker(void *args) {
             };
             UpsertContext context{loads[i], loads[i]};
             Status stat = store.Upsert(context, callback, 1);
-            hit++;
+            if (stat == Status::NotFound)
+                fail++;
+            else
+                hit++;
 #endif
         }
     }

@@ -14,16 +14,16 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        1
+#define TEST_LOOKUP        0
 
 #define COUNT_HASH         0
 
 #define DEFAULT_STORE_BASE 100000000
 
 #if COUNT_HASH
-neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 8> *mhash;
+neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *mhash;
 #else
-neatlib::LockFreeHashTable<uint64_t, uint64_t> *mhash;
+neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *mhash;
 #endif
 
 uint64_t *loads;
@@ -50,9 +50,9 @@ struct target {
     int tid;
     uint64_t *insert;
 #if COUNT_HASH
-    neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 8> *store;
+    neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *store;
 #else
-    neatlib::LockFreeHashTable<uint64_t, uint64_t> *store;
+    neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *store;
 #endif
 };
 
@@ -176,9 +176,9 @@ int main(int argc, char **argv) {
         total_count = std::atol(argv[3]);
     }
 #if COUNT_HASH
-    mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 8>();
+    mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>();
 #else
-    mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t>(thread_number);
+    mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>(thread_number);
 #endif
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
