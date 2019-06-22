@@ -9,14 +9,14 @@
 using namespace FASTER::io;
 
 namespace FASTER {
-    namespace io {
-        std::string FormatWin32AndHRESULT(DWORD win32_result) {
-            std::stringstream ss;
-            ss << "Win32(" << win32_result << ") HRESULT("
-               << std::showbase << std::uppercase << std::setfill('0') << std::hex
-               << HRESULT_FROM_WIN32(win32_result) << ")";
-            return ss.str();
-        }
+namespace io {
+std::string FormatWin32AndHRESULT(DWORD win32_result) {
+    std::stringstream ss;
+    ss << "Win32(" << win32_result << ") HRESULT("
+       << std::showbase << std::uppercase << std::setfill('0') << std::hex
+       << HRESULT_FROM_WIN32(win32_result) << ")";
+    return ss.str();
+}
 
 #ifdef _DEBUG
 #define DCHECK_ALIGNMENT(o, l, b) \
@@ -29,112 +29,112 @@ do { \
 #define DCHECK_ALIGNMENT(o, l, b) do {} while(0)
 #endif
 
-        Status File::Open(DWORD flags, FileCreateDisposition create_disposition, bool *exists) {
-            assert(!filename_.empty());
-            if (exists) {
-                *exists = false;
-            }
-
-            file_handle_ = ::CreateFileA(filename_.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-                                         GetCreateDisposition(create_disposition), flags, nullptr);
-            if (exists) {
-                // Let the caller know whether the file we tried to open or create (already) exists.
-                if (create_disposition == FileCreateDisposition::CreateOrTruncate ||
-                    create_disposition == FileCreateDisposition::OpenOrCreate) {
-                    *exists = (::GetLastError() == ERROR_ALREADY_EXISTS);
-                } else if (create_disposition == FileCreateDisposition::OpenExisting) {
-                    *exists = (::GetLastError() != ERROR_FILE_NOT_FOUND);
-                    if (!*exists) {
-                        // The file doesn't exist. Don't return an error, since the caller is expecting this case.
-                        return Status::Ok;
-                    }
-                }
-            }
-            if (file_handle_ == INVALID_HANDLE_VALUE) {
-                auto error = ::GetLastError();
-                return Status::IOError;
-            }
-
-            Status result = GetDeviceAlignment();
-            if (result != Status::Ok) {
-                Close();
-            }
-            owner_ = true;
-            return result;
-        }
-
-        Status File::Close() {
-            if (file_handle_ != INVALID_HANDLE_VALUE) {
-                bool success = ::CloseHandle(file_handle_);
-                file_handle_ = INVALID_HANDLE_VALUE;
-                if (!success) {
-                    auto error = ::GetLastError();
-                    return Status::IOError;
-                }
-            }
-            owner_ = false;
-            return Status::Ok;
-        }
-
-        Status File::Delete() {
-            bool success = ::DeleteFileA(filename_.c_str());
-            if (!success) {
-                auto error = ::GetLastError();
-                return Status::IOError;
-            }
-            return Status::Ok;
-        }
-
-        Status File::GetDeviceAlignment() {
-            FILE_STORAGE_INFO info;
-            bool result = ::GetFileInformationByHandleEx(file_handle_,
-                                                         FILE_INFO_BY_HANDLE_CLASS::FileStorageInfo, &info,
-                                                         sizeof(info));
-            if (!result) {
-                auto error = ::GetLastError();
-                return Status::IOError;
-            }
-
-            device_alignment_ = info.LogicalBytesPerSector;
-            return Status::Ok;
-        }
-
-        DWORD File::GetCreateDisposition(FileCreateDisposition create_disposition) {
-            switch (create_disposition) {
-                case FileCreateDisposition::CreateOrTruncate:
-                    return CREATE_ALWAYS;
-                case FileCreateDisposition::OpenOrCreate:
-                    return OPEN_ALWAYS;
-                case FileCreateDisposition::OpenExisting:
-                    return OPEN_EXISTING;
-                default:
-                    assert(false);
-                    return INVALID_FILE_ATTRIBUTES; // not reached
-            }
-        }
-
-        void CALLBACK
-        ThreadPoolIoHandler::IoCompletionCallback(PTP_CALLBACK_INSTANCE
-        instance,
-        PVOID context, PVOID
-        overlapped,
-        ULONG ioResult, ULONG_PTR
-        bytesTransferred,
-        PTP_IO io
-        ) {
-        // context is always nullptr; state is threaded via the OVERLAPPED
-        auto callback_context = make_context_unique_ptr<IoCallbackContext>(
-                reinterpret_cast<IoCallbackContext *>(overlapped));
-
-        HRESULT hr = HRESULT_FROM_WIN32(ioResult);
-        Status return_status;
-        if(
-        FAILED(hr)
-        ) {
-        return_status = Status::IOError;
+Status File::Open(DWORD flags, FileCreateDisposition create_disposition, bool *exists) {
+    assert(!filename_.empty());
+    if (exists) {
+        *exists = false;
     }
-    else {
-    return_status = Status::Ok;
+
+    file_handle_ = ::CreateFileA(filename_.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+                                 GetCreateDisposition(create_disposition), flags, nullptr);
+    if (exists) {
+        // Let the caller know whether the file we tried to open or create (already) exists.
+        if (create_disposition == FileCreateDisposition::CreateOrTruncate ||
+            create_disposition == FileCreateDisposition::OpenOrCreate) {
+            *exists = (::GetLastError() == ERROR_ALREADY_EXISTS);
+        } else if (create_disposition == FileCreateDisposition::OpenExisting) {
+            *exists = (::GetLastError() != ERROR_FILE_NOT_FOUND);
+            if (!*exists) {
+                // The file doesn't exist. Don't return an error, since the caller is expecting this case.
+                return Status::Ok;
+            }
+        }
+    }
+    if (file_handle_ == INVALID_HANDLE_VALUE) {
+        auto error = ::GetLastError();
+        return Status::IOError;
+    }
+
+    Status result = GetDeviceAlignment();
+    if (result != Status::Ok) {
+        Close();
+    }
+    owner_ = true;
+    return result;
+}
+
+Status File::Close() {
+    if (file_handle_ != INVALID_HANDLE_VALUE) {
+        bool success = ::CloseHandle(file_handle_);
+        file_handle_ = INVALID_HANDLE_VALUE;
+        if (!success) {
+            auto error = ::GetLastError();
+            return Status::IOError;
+        }
+    }
+    owner_ = false;
+    return Status::Ok;
+}
+
+Status File::Delete() {
+    bool success = ::DeleteFileA(filename_.c_str());
+    if (!success) {
+        auto error = ::GetLastError();
+        return Status::IOError;
+    }
+    return Status::Ok;
+}
+
+Status File::GetDeviceAlignment() {
+    FILE_STORAGE_INFO info;
+    bool result = ::GetFileInformationByHandleEx(file_handle_,
+                                                 FILE_INFO_BY_HANDLE_CLASS::FileStorageInfo, &info,
+                                                 sizeof(info));
+    if (!result) {
+        auto error = ::GetLastError();
+        return Status::IOError;
+    }
+
+    device_alignment_ = info.LogicalBytesPerSector;
+    return Status::Ok;
+}
+
+DWORD File::GetCreateDisposition(FileCreateDisposition create_disposition) {
+    switch (create_disposition) {
+        case FileCreateDisposition::CreateOrTruncate:
+            return CREATE_ALWAYS;
+        case FileCreateDisposition::OpenOrCreate:
+            return OPEN_ALWAYS;
+        case FileCreateDisposition::OpenExisting:
+            return OPEN_EXISTING;
+        default:
+            assert(false);
+            return INVALID_FILE_ATTRIBUTES; // not reached
+    }
+}
+
+void CALLBACK
+ThreadPoolIoHandler::IoCompletionCallback(PTP_CALLBACK_INSTANCE
+instance,
+PVOID context, PVOID
+overlapped,
+ULONG ioResult, ULONG_PTR
+bytesTransferred,
+PTP_IO io
+) {
+// context is always nullptr; state is threaded via the OVERLAPPED
+auto callback_context = make_context_unique_ptr<IoCallbackContext>(
+        reinterpret_cast<IoCallbackContext *>(overlapped));
+
+HRESULT hr = HRESULT_FROM_WIN32(ioResult);
+Status return_status;
+if(
+FAILED(hr)
+) {
+return_status = Status::IOError;
+}
+else {
+return_status = Status::Ok;
 }
 callback_context->
 callback(callback_context

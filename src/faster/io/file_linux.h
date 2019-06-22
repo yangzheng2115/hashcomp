@@ -18,234 +18,234 @@
 using namespace FASTER::misc;
 
 namespace FASTER {
-    namespace io {
+namespace io {
 
-        constexpr const char *kPathSeparator = "/";
+constexpr const char *kPathSeparator = "/";
 
 /// The File class encapsulates the OS file handle.
-        class File {
-        protected:
-            File()
-                    : fd_{-1}, device_alignment_{0}, filename_{}, owner_{false}
+class File {
+protected:
+    File()
+            : fd_{-1}, device_alignment_{0}, filename_{}, owner_{false}
 #ifdef IO_STATISTICS
-            , bytes_written_ { 0 }
-            , read_count_{ 0 }
-            , bytes_read_{ 0 }
+    , bytes_written_ { 0 }
+    , read_count_{ 0 }
+    , bytes_read_{ 0 }
 #endif
-            {
-            }
+    {
+    }
 
-            File(const std::string &filename)
-                    : fd_{-1}, device_alignment_{0}, filename_{filename}, owner_{false}
+    File(const std::string &filename)
+            : fd_{-1}, device_alignment_{0}, filename_{filename}, owner_{false}
 #ifdef IO_STATISTICS
-            , bytes_written_ { 0 }
-            , read_count_{ 0 }
-            , bytes_read_{ 0 }
+    , bytes_written_ { 0 }
+    , read_count_{ 0 }
+    , bytes_read_{ 0 }
 #endif
-            {
-            }
+    {
+    }
 
-            /// Move constructor.
-            File(File &&other)
-                    : fd_{other.fd_}, device_alignment_{other.device_alignment_}, filename_{std::move(other.filename_)},
-                      owner_{other.owner_}
+    /// Move constructor.
+    File(File &&other)
+            : fd_{other.fd_}, device_alignment_{other.device_alignment_}, filename_{std::move(other.filename_)},
+              owner_{other.owner_}
 #ifdef IO_STATISTICS
-            , bytes_written_ { other.bytes_written_ }
-            , read_count_{ other.read_count_ }
-            , bytes_read_{ other.bytes_read_ }
+    , bytes_written_ { other.bytes_written_ }
+    , read_count_{ other.read_count_ }
+    , bytes_read_{ other.bytes_read_ }
 #endif
-            {
-                other.owner_ = false;
-            }
+    {
+        other.owner_ = false;
+    }
 
-            ~File() {
-                if (owner_) {
-                    Status s = Close();
-                }
-            }
+    ~File() {
+        if (owner_) {
+            Status s = Close();
+        }
+    }
 
-            /// Move assignment operator.
-            File &operator=(File &&other) {
-                fd_ = other.fd_;
-                device_alignment_ = other.device_alignment_;
-                filename_ = std::move(other.filename_);
-                owner_ = other.owner_;
+    /// Move assignment operator.
+    File &operator=(File &&other) {
+        fd_ = other.fd_;
+        device_alignment_ = other.device_alignment_;
+        filename_ = std::move(other.filename_);
+        owner_ = other.owner_;
 #ifdef IO_STATISTICS
-                bytes_written_ = other.bytes_written_;
-                read_count_ = other.read_count_;
-                bytes_read_ = other.bytes_read_;
+        bytes_written_ = other.bytes_written_;
+        read_count_ = other.read_count_;
+        bytes_read_ = other.bytes_read_;
 #endif
-                other.owner_ = false;
-                return *this;
-            }
+        other.owner_ = false;
+        return *this;
+    }
 
-        protected:
-            Status Open(int flags, FileCreateDisposition create_disposition, bool *exists = nullptr);
+protected:
+    Status Open(int flags, FileCreateDisposition create_disposition, bool *exists = nullptr);
 
-        public:
-            Status Close();
+public:
+    Status Close();
 
-            Status Delete();
+    Status Delete();
 
-            uint64_t size() const {
-                struct stat stat_buffer;
-                int result = ::fstat(fd_, &stat_buffer);
-                return (result == 0) ? stat_buffer.st_size : 0;
-            }
+    uint64_t size() const {
+        struct stat stat_buffer;
+        int result = ::fstat(fd_, &stat_buffer);
+        return (result == 0) ? stat_buffer.st_size : 0;
+    }
 
-            size_t device_alignment() const {
-                return device_alignment_;
-            }
+    size_t device_alignment() const {
+        return device_alignment_;
+    }
 
-            const std::string &filename() const {
-                return filename_;
-            }
-
-#ifdef IO_STATISTICS
-            uint64_t bytes_written() const {
-              return bytes_written_.load();
-            }
-            uint64_t read_count() const {
-              return read_count_.load();
-            }
-            uint64_t bytes_read() const {
-              return bytes_read_.load();
-            }
-#endif
-
-        private:
-            Status GetDeviceAlignment();
-
-            static int GetCreateDisposition(FileCreateDisposition create_disposition);
-
-        protected:
-            int fd_;
-
-        private:
-            size_t device_alignment_;
-            std::string filename_;
-            bool owner_;
+    const std::string &filename() const {
+        return filename_;
+    }
 
 #ifdef IO_STATISTICS
-            protected:
-             std::atomic<uint64_t> bytes_written_;
-             std::atomic<uint64_t> read_count_;
-             std::atomic<uint64_t> bytes_read_;
+    uint64_t bytes_written() const {
+      return bytes_written_.load();
+    }
+    uint64_t read_count() const {
+      return read_count_.load();
+    }
+    uint64_t bytes_read() const {
+      return bytes_read_.load();
+    }
 #endif
-        };
 
-        class QueueFile;
+private:
+    Status GetDeviceAlignment();
+
+    static int GetCreateDisposition(FileCreateDisposition create_disposition);
+
+protected:
+    int fd_;
+
+private:
+    size_t device_alignment_;
+    std::string filename_;
+    bool owner_;
+
+#ifdef IO_STATISTICS
+    protected:
+     std::atomic<uint64_t> bytes_written_;
+     std::atomic<uint64_t> read_count_;
+     std::atomic<uint64_t> bytes_read_;
+#endif
+};
+
+class QueueFile;
 
 /// The QueueIoHandler class encapsulates completions for async file I/O, where the completions
 /// are put on the AIO completion queue.
-        class QueueIoHandler {
-        public:
-            typedef QueueFile async_file_t;
+class QueueIoHandler {
+public:
+    typedef QueueFile async_file_t;
 
-        private:
-            constexpr static int kMaxEvents = 128;
+private:
+    constexpr static int kMaxEvents = 128;
 
-        public:
-            QueueIoHandler()
-                    : io_object_{0} {
+public:
+    QueueIoHandler()
+            : io_object_{0} {
+    }
+
+    QueueIoHandler(size_t max_threads)
+            : io_object_{0} {
+        int result = ::io_setup(kMaxEvents, &io_object_);
+        assert(result >= 0);
+    }
+
+    /// Move constructor
+    QueueIoHandler(QueueIoHandler &&other) {
+        io_object_ = other.io_object_;
+        other.io_object_ = 0;
+    }
+
+    ~QueueIoHandler() {
+        if (io_object_ != 0)
+            ::io_destroy(io_object_);
+    }
+
+    /// Invoked whenever a Linux AIO completes.
+    static void IoCompletionCallback(io_context_t ctx, struct iocb *iocb, long res, long res2);
+
+    struct IoCallbackContext {
+        IoCallbackContext(FileOperationType operation, int fd, size_t offset, uint32_t length,
+                          uint8_t *buffer, IAsyncContext *context_, AsyncIOCallback callback_)
+                : caller_context{context_}, callback{callback_} {
+            if (FileOperationType::Read == operation) {
+                ::io_prep_pread(&this->parent_iocb, fd, buffer, length, offset);
+            } else {
+                ::io_prep_pwrite(&this->parent_iocb, fd, buffer, length, offset);
             }
+            ::io_set_callback(&this->parent_iocb, IoCompletionCallback);
+        }
 
-            QueueIoHandler(size_t max_threads)
-                    : io_object_{0} {
-                int result = ::io_setup(kMaxEvents, &io_object_);
-                assert(result >= 0);
-            }
+        // WARNING: "parent_iocb" must be the first field in AioCallbackContext. This class is a C-style
+        // subclass of "struct iocb".
 
-            /// Move constructor
-            QueueIoHandler(QueueIoHandler &&other) {
-                io_object_ = other.io_object_;
-                other.io_object_ = 0;
-            }
+        /// The iocb structure for Linux AIO.
+        struct iocb parent_iocb;
 
-            ~QueueIoHandler() {
-                if (io_object_ != 0)
-                    ::io_destroy(io_object_);
-            }
+        /// Caller callback context.
+        IAsyncContext *caller_context;
 
-            /// Invoked whenever a Linux AIO completes.
-            static void IoCompletionCallback(io_context_t ctx, struct iocb *iocb, long res, long res2);
+        /// The caller's asynchronous callback function
+        AsyncIOCallback callback;
+    };
 
-            struct IoCallbackContext {
-                IoCallbackContext(FileOperationType operation, int fd, size_t offset, uint32_t length,
-                                  uint8_t *buffer, IAsyncContext *context_, AsyncIOCallback callback_)
-                        : caller_context{context_}, callback{callback_} {
-                    if (FileOperationType::Read == operation) {
-                        ::io_prep_pread(&this->parent_iocb, fd, buffer, length, offset);
-                    } else {
-                        ::io_prep_pwrite(&this->parent_iocb, fd, buffer, length, offset);
-                    }
-                    ::io_set_callback(&this->parent_iocb, IoCompletionCallback);
-                }
+    inline io_context_t io_object() const {
+        return io_object_;
+    }
 
-                // WARNING: "parent_iocb" must be the first field in AioCallbackContext. This class is a C-style
-                // subclass of "struct iocb".
+    /// Try to execute the next IO completion on the queue, if any.
+    bool TryComplete();
 
-                /// The iocb structure for Linux AIO.
-                struct iocb parent_iocb;
-
-                /// Caller callback context.
-                IAsyncContext *caller_context;
-
-                /// The caller's asynchronous callback function
-                AsyncIOCallback callback;
-            };
-
-            inline io_context_t io_object() const {
-                return io_object_;
-            }
-
-            /// Try to execute the next IO completion on the queue, if any.
-            bool TryComplete();
-
-        private:
-            /// The Linux AIO context used for IO completions.
-            io_context_t io_object_;
-        };
+private:
+    /// The Linux AIO context used for IO completions.
+    io_context_t io_object_;
+};
 
 /// The QueueFile class encapsulates asynchronous reads and writes, using the specified AIO
 /// context.
-        class QueueFile : public File {
-        public:
-            QueueFile()
-                    : File(), io_object_{nullptr} {
-            }
-
-            QueueFile(const std::string &filename)
-                    : File(filename), io_object_{nullptr} {
-            }
-
-            /// Move constructor
-            QueueFile(QueueFile &&other)
-                    : File(std::move(other)), io_object_{other.io_object_} {
-            }
-
-            /// Move assignment operator.
-            QueueFile &operator=(QueueFile &&other) {
-                File::operator=(std::move(other));
-                io_object_ = other.io_object_;
-                return *this;
-            }
-
-            Status Open(FileCreateDisposition create_disposition, const FileOptions &options,
-                        QueueIoHandler *handler, bool *exists = nullptr);
-
-            Status Read(size_t offset, uint32_t length, uint8_t *buffer,
-                        IAsyncContext &context, AsyncIOCallback callback) const;
-
-            Status Write(size_t offset, uint32_t length, const uint8_t *buffer,
-                         IAsyncContext &context, AsyncIOCallback callback);
-
-        private:
-            Status ScheduleOperation(FileOperationType operationType, uint8_t *buffer, size_t offset,
-                                     uint32_t length, IAsyncContext &context, AsyncIOCallback callback);
-
-            io_context_t io_object_;
-        };
-
+class QueueFile : public File {
+public:
+    QueueFile()
+            : File(), io_object_{nullptr} {
     }
+
+    QueueFile(const std::string &filename)
+            : File(filename), io_object_{nullptr} {
+    }
+
+    /// Move constructor
+    QueueFile(QueueFile &&other)
+            : File(std::move(other)), io_object_{other.io_object_} {
+    }
+
+    /// Move assignment operator.
+    QueueFile &operator=(QueueFile &&other) {
+        File::operator=(std::move(other));
+        io_object_ = other.io_object_;
+        return *this;
+    }
+
+    Status Open(FileCreateDisposition create_disposition, const FileOptions &options,
+                QueueIoHandler *handler, bool *exists = nullptr);
+
+    Status Read(size_t offset, uint32_t length, uint8_t *buffer,
+                IAsyncContext &context, AsyncIOCallback callback) const;
+
+    Status Write(size_t offset, uint32_t length, const uint8_t *buffer,
+                 IAsyncContext &context, AsyncIOCallback callback);
+
+private:
+    Status ScheduleOperation(FileOperationType operationType, uint8_t *buffer, size_t offset,
+                             uint32_t length, IAsyncContext &context, AsyncIOCallback callback);
+
+    io_context_t io_object_;
+};
+
+}
 } // namespace FASTER::environment

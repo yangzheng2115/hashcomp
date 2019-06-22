@@ -112,7 +112,7 @@ uint64_t string_key_hash_computation(const void *data, uint64_t length, uint64_t
     }
 
     if (p + 4 <= end) {
-        hash ^= (uint64_t)(hash_get32bits(p)) * NUMBER64_1;
+        hash ^= (uint64_t) (hash_get32bits(p)) * NUMBER64_1;
         hash = shifting_hash(hash, 23) * NUMBER64_2 + NUMBER64_3;
         p += 4;
     }

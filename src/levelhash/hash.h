@@ -3,6 +3,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*
 Function: hash() 
         This function is used to compute the hash value of a string key;

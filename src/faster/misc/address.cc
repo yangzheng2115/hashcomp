@@ -4,9 +4,9 @@
 #include "address.h"
 
 namespace FASTER {
-    namespace misc {
+namespace misc {
 
-        constexpr uint32_t Address::kMaxOffset;
+constexpr uint32_t Address::kMaxOffset;
 
-    }
+}
 } // namespace FASTER::core
