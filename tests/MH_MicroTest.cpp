@@ -1,10 +1,12 @@
 #include <iostream>
 #include <sstream>
-#include "tracer.h"
+#include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
-#include <lock_free_hash_table.h>
-#include <concurrent_hash_table.h>
+#include "tracer.h"
+#include "lock_free_hash_table.h"
+#include "concurrent_hash_table.h"
+#include "basic_hash_table.h"
 
 #define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
@@ -16,12 +18,18 @@
 
 #define TEST_LOOKUP        0
 
-#define COUNT_HASH         0
+#define COUNT_HASH         2
 
 #define DEFAULT_STORE_BASE 100000000
 
-#if COUNT_HASH
+#if COUNT_HASH == 1
 neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *mhash;
+#elif COUNT_HASH == 2
+neatlib::BasicHashTable<uint64_t,
+        uint64_t,
+        std::hash<uint64_t>,
+        std::equal_to<uint64_t>,
+        std::allocator<std::pair<const uint64_t, uint64_t>>, 4> *mhash;
 #else
 neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *mhash;
 #endif
@@ -49,8 +57,14 @@ atomic<int> stopMeasure(0);
 struct target {
     int tid;
     uint64_t *insert;
-#if COUNT_HASH
+#if COUNT_HASH == 1
     neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *store;
+#elif COUNT_HASH == 2
+    neatlib::BasicHashTable<uint64_t,
+            uint64_t,
+            std::hash<uint64_t>,
+            std::equal_to<uint64_t>,
+            std::allocator<std::pair<const uint64_t, uint64_t>>, 4> *store;
 #else
     neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *store;
 #endif
@@ -177,8 +191,14 @@ int main(int argc, char **argv) {
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
     }
-#if COUNT_HASH
+#if COUNT_HASH == 1
     mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>();
+#elif COUNT_HASH == 2
+    mhash = new neatlib::BasicHashTable<uint64_t,
+            uint64_t,
+            std::hash<uint64_t>,
+            std::equal_to<uint64_t>,
+            std::allocator<std::pair<const uint64_t, uint64_t>>, 4>();
 #else
     mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>(thread_number);
 #endif
