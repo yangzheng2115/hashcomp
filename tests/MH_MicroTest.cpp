@@ -3,10 +3,12 @@
 #include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unordered_set>
 #include "tracer.h"
 #include "lock_free_hash_table.h"
 #include "concurrent_hash_table.h"
 #include "basic_hash_table.h"
+#include "atomic_shared_ptr.h"
 
 #define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
@@ -16,14 +18,22 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        0
+#define TEST_LOOKUP        1
 
-#define COUNT_HASH         2
+#define COUNT_HASH         1
 
 #define DEFAULT_STORE_BASE 100000000
 
 #if COUNT_HASH == 1
+#define UNSAFE
+#ifdef UNSAFE
+neatlib::ConcurrentHashTable<uint64_t, uint64_t,
+        std::hash<uint64_t>, 4, 16,
+        neatlib::unsafe::atomic_shared_ptr,
+        neatlib::unsafe::shared_ptr> *mhash;
+#else
 neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *mhash;
+#endif
 #elif COUNT_HASH == 2
 neatlib::BasicHashTable<uint64_t,
         uint64_t,
@@ -58,7 +68,14 @@ struct target {
     int tid;
     uint64_t *insert;
 #if COUNT_HASH == 1
+#ifdef UNSAFE
+    neatlib::ConcurrentHashTable<uint64_t, uint64_t,
+            std::hash<uint64_t>, 4, 16,
+            neatlib::unsafe::atomic_shared_ptr,
+            neatlib::unsafe::shared_ptr> *store;
+#else
     neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *store;
+#endif
 #elif COUNT_HASH == 2
     neatlib::BasicHashTable<uint64_t,
             uint64_t,
@@ -78,8 +95,10 @@ void simpleInsert() {
     Tracer tracer;
     tracer.startTime();
     int inserted = 0;
+    unordered_set<uint64_t> set;
     for (int i = 0; i < total_count; i++) {
         mhash->Insert(loads[i], loads[i]);
+        set.insert(loads[i]);
         inserted++;
     }
     cout << inserted << " " << tracer.getRunTime() << endl;
@@ -101,26 +120,30 @@ void *measureWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
-    while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = 0; i < total_count; i++) {
+    try {
+        while (stopMeasure.load(memory_order_relaxed) == 0) {
+            for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
-            std::pair<uint64_t, uint64_t> ret = mhash->Get(loads[i]);
-            /*if (ret.second != loads[i]) {
-                sleep(work->tid * 10);
-                cout << "\t" << loads[i] << " " << ret.first << " " << ret.second << endl;
-                //exit(0);
-            }*/
-            if (ret.second == loads[i])
-                hit++;
-            else
-                fail++;
+                std::pair<uint64_t, uint64_t> ret = mhash->Get(loads[i]);
+                /*if (ret.second != loads[i]) {
+                    sleep(work->tid * 10);
+                    cout << "\t" << loads[i] << " " << ret.first << " " << ret.second << endl;
+                    //exit(0);
+                }*/
+                if (ret.second == loads[i])
+                    hit++;
+                else
+                    fail++;
 #else
-            if (mhash->Update(loads[i], loads[i]))
-                hit++;
-            else
-                fail++;
+                if (mhash->Update(loads[i], loads[i]))
+                    hit++;
+                else
+                    fail++;
 #endif
+            }
         }
+    } catch (exception e) {
+        cout << work->tid << endl;
     }
 
     long elipsed = tracer.getRunTime();
@@ -192,7 +215,14 @@ int main(int argc, char **argv) {
         total_count = std::atol(argv[3]);
     }
 #if COUNT_HASH == 1
+#ifdef UNSAFE
+    mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t,
+            std::hash<uint64_t>, 4, 16,
+            neatlib::unsafe::atomic_shared_ptr,
+            neatlib::unsafe::shared_ptr>();
+#else
     mhash = new neatlib::ConcurrentHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>();
+#endif
 #elif COUNT_HASH == 2
     mhash = new neatlib::BasicHashTable<uint64_t,
             uint64_t,

@@ -31,10 +31,8 @@ private:
         DATA_NODE = 0, ARRAY_NODE
     };
 
-    constexpr static std::size_t ARRAY_SIZE =
-            static_cast<const std::size_t>(get_power2<HASH_LEVEL>::value);
-    constexpr static std::size_t ROOT_ARRAY_SIZE =
-            static_cast<const std::size_t>(get_power2<ROOT_HASH_LEVEL>::value);
+    constexpr static std::size_t ARRAY_SIZE = static_cast<const std::size_t>(get_power2<HASH_LEVEL>::value);
+    constexpr static std::size_t ROOT_ARRAY_SIZE = static_cast<const std::size_t>(get_power2<ROOT_HASH_LEVEL>::value);
 
     using insert_type = std::integral_constant<int, 0>;
     using modify_type = std::integral_constant<int, 1>;
@@ -59,11 +57,11 @@ private:
         const std::pair<const Key, const T> data_;
         const std::size_t hash_;
 
-        data_node(const Key &key, const T &mapped) :
-                node(node_type::DATA_NODE), data_(key, mapped), hash_(Hash()(key)) {}
+        data_node(const Key &key, const T &mapped) : node(node_type::DATA_NODE), data_(key, mapped),
+                                                     hash_(Hash()(key)) {}
 
-        data_node(const Key &key, const T &mapped, const std::size_t h) :
-                node(node_type::DATA_NODE), data_(key, mapped), hash_(h) {}
+        data_node(const Key &key, const T &mapped, const std::size_t h) : node(node_type::DATA_NODE),
+                                                                          data_(key, mapped), hash_(h) {}
 
         std::size_t hash() const { return hash_; }
     };
@@ -237,18 +235,15 @@ private:
 
                 for (; fail < FAIL_LIMIT; fail++) {
                     if (!loc_ref_.get()) {
-                        shared_ptr<node>
-                                tmp_ptr(static_cast<node *>(new data_node(key, mapped, hash)));
-                        if (atomic_pos->compare_exchange_strong(loc_ref_,
-                                                                tmp_ptr)) {
+                        shared_ptr<node> tmp_ptr(static_cast<node *>(new data_node(key, mapped, hash)));
+                        if (atomic_pos->compare_exchange_strong(loc_ref_, tmp_ptr)) {
                             // CAS succeeds means a successful insertion
                             loc_ref_ = std::move(tmp_ptr);
                             end = true;
                             break;
                         } else {
                             // CAS fails means the atomic ptr just got changed
-//                            assert(loc_ref_->type_ == node_type::ARRAY_NODE ||
-//                                   loc_ref_->type_ == node_type::DATA_NODE);
+//                          assert(loc_ref_->type_ == node_type::ARRAY_NODE || loc_ref_->type_ == node_type::DATA_NODE);
                             continue;
                         }
                     } else if (loc_ref_.get()->type_ == node_type::DATA_NODE) {
@@ -272,9 +267,8 @@ private:
                             break;
                         } else {
                             // CAS fails means the atomic was changed by other threads
-//                            assert(loc_ref_ == nullptr ||
-//                                   loc_ref_->type_ == node_type::DATA_NODE ||
-//                                   loc_ref_->type_ == node_type::ARRAY_NODE);
+                            /*assert(loc_ref_ == nullptr || loc_ref_->type_ == node_type::DATA_NODE ||
+                                   loc_ref_->type_ == node_type::ARRAY_NODE);*/
                             continue;
                         }
                     } else {
@@ -321,7 +315,7 @@ public:
         locator locator_(*this, key, mapped, insert_type());
         if (locator_.loc_ref_ == nullptr)
             return false;
-//        size_.fetch_add(1, std::memory_order_relaxed);
+        size_.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
