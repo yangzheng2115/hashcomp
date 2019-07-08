@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
     switch (type) {
         case UNIQUE_COUNT:
             uniqueCount();
+            break;
         default:
             cout << "Type: 0 (unique counter)" << endl;
     }
