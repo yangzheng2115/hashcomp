@@ -191,13 +191,27 @@ void loadYCSB(char *path) {
         }
         if (found == total) break;
     }
-    cout << found << endl;
+    cout << "Load " << found << endl;
 }
 
 void initYCSB(int vscale) {
     for (int i = 0; i < total; i++) {
         mhash->Insert(sinput[i], dummy[vscale]);
     }
+}
+
+void verifyYCSB(int vscale) {
+    size_t found = 0;
+    size_t missed = 0;
+    for (int i = 0; i < total; i++) {
+        pair<char *, char *> kv = mhash->Get(sinput[i]);
+        if (strcmp(kv.first, sinput[i]) != 0) {
+            missed++;
+        } else {
+            found++;
+        }
+    }
+    cout << "Found: " << found << " missed: " << missed << endl;
 }
 
 void freeLoad() {
@@ -226,6 +240,9 @@ int main(int argc, char **argv) {
             tracer.startTime();
             initYCSB(std::atoi(argv[4]));
             cout << "Init time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            verifyYCSB(std::atoi(argv[4]));
+            cout << "Search time: " << tracer.getRunTime() << endl;
             freeLoad();
             break;
         default:
