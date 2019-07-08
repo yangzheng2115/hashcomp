@@ -100,7 +100,8 @@ endif ()
 option(WITH_UTILS "build with utils" ON)
 if (WITH_UTILS)
     set(UTILS
-            utils/DistributionTool.cpp)
+            utils/DistributionTool.cpp
+            utils/MicroDistTool.cpp)
 endif ()
 
 find_package(Threads)
