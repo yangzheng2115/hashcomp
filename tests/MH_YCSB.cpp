@@ -53,6 +53,7 @@ void initYCSB(char *path, size_t count) {
                 size_t epos = s.find(" ", spos);
                 string os = s.substr(spos - 1, epos - spos + 1);
                 input.push_back(os);
+                found++;
                 //cout << found++ << " " << os << " " << os.size() << endl;
             }
             //cout << s << endl;
@@ -61,6 +62,7 @@ void initYCSB(char *path, size_t count) {
             cout << s.substr(spos + 4, epos) << endl;*/
         }
     }
+    cout << found << endl;
 }
 
 int main(int argc, char **argv) {
