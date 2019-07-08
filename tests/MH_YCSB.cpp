@@ -152,6 +152,8 @@ char *update[]{
 
 size_t total = 100;
 
+int scale = 0;
+
 char **sinput;
 
 neatlib::BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4> *mhash;
@@ -201,17 +203,23 @@ void initYCSB(int vscale) {
 }
 
 void verifyYCSB(int vscale) {
-    size_t found = 0;
-    size_t missed = 0;
-    for (int i = 0; i < total; i++) {
-        pair<char *, char *> kv = mhash->Get(sinput[i]);
-        if (strcmp(kv.first, sinput[i]) != 0) {
-            missed++;
-        } else {
-            found++;
+    if (vscale == scale) {
+        size_t found = 0;
+        size_t missed = 0;
+        for (int i = 0; i < total; i++) {
+            pair<char *, char *> kv = mhash->Get(sinput[i]);
+            if (strcmp(kv.first, sinput[i]) != 0) {
+                missed++;
+            } else {
+                found++;
+            }
+        }
+        cout << "Found: " << found << " missed: " << missed << endl;
+    } else {
+        for (int i = 0; i < total; i++) {
+            mhash->Update(sinput[i], dummy[vscale]);
         }
     }
-    cout << "Found: " << found << " missed: " << missed << endl;
 }
 
 void freeLoad() {
@@ -235,14 +243,18 @@ int main(int argc, char **argv) {
             Tracer tracer;
             tracer.startTime();
             total = std::atol(argv[3]);
+            scale = std::atoi(argv[4]);
             loadYCSB(argv[2]);
             cout << "Load time: " << tracer.getRunTime() << endl;
             tracer.startTime();
-            initYCSB(std::atoi(argv[4]));
+            initYCSB(scale);
             cout << "Init time: " << tracer.getRunTime() << endl;
             tracer.startTime();
-            verifyYCSB(std::atoi(argv[4]));
+            verifyYCSB(scale);
             cout << "Search time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            verifyYCSB(scale + 1);
+            cout << "Update time: " << tracer.getRunTime() << endl;
             freeLoad();
             break;
         default:
