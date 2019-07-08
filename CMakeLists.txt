@@ -94,7 +94,8 @@ endif ()
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
 if (WITH_MH_TESTS)
     set(MH_TEST
-            tests/MH_MicroTest.cpp)
+            tests/MH_MicroTest.cpp
+            tests/MH_YCSB.cpp)
 endif ()
 
 option(WITH_UTILS "build with utils" ON)
