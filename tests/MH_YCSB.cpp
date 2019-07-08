@@ -20,13 +20,139 @@
 using namespace std;
 
 char *dummy[]{
-        "abwerewrsdfrwerewererw",
-        "werweasdrewrewweserewwwwer",
-        "werqwersaserwserewwsserwew",
-        "werewrserweesrttasswewrews"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
 };
 
-vector<string> input;
+
+char *update[]{
+        "werewsdvcxewwrsdfxcvwerwesdfwerw",
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "werewsdvcxewwrsdfxcvwerwesdfwerw",
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw",
+        "werewsdvcxewwrsdfxcvwerwesdfwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+        "abwerewrsdfrwereweewrewrrewrwerw"
+};
+
+//vector<string> input;
+
+size_t total = 100;
+
+char **sinput;
 
 neatlib::BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4> *mhash;
 
@@ -39,7 +165,8 @@ void simpleInsert() {
     }
 }
 
-void initYCSB(char *path, size_t count) {
+void loadYCSB(char *path) {
+    sinput = new char *[total];
     ifstream fin(path);
     string s;
     string regex_str("user\\d");
@@ -52,8 +179,9 @@ void initYCSB(char *path, size_t count) {
                 size_t spos = results[0].second - s.begin();
                 size_t epos = s.find(" ", spos);
                 string os = s.substr(spos - 1, epos - spos + 1);
-                input.push_back(os);
-                found++;
+                sinput[found] = new char[os.size() + 1];
+                mempcpy(sinput[found++], os.c_str(), os.size());
+                //input.push_back(os);
                 //cout << found++ << " " << os << " " << os.size() << endl;
             }
             //cout << s << endl;
@@ -61,8 +189,22 @@ void initYCSB(char *path, size_t count) {
             size_t epos = s.find(" ", spos);
             cout << s.substr(spos + 4, epos) << endl;*/
         }
+        if (found == total) break;
     }
     cout << found << endl;
+}
+
+void initYCSB(int vscale) {
+    for (int i = 0; i < total; i++) {
+        mhash->Insert(sinput[i], dummy[vscale]);
+    }
+}
+
+void freeLoad() {
+    for (int i = 0; i < total; i++) {
+        delete[] sinput[i];
+    }
+    delete[] sinput;
 }
 
 int main(int argc, char **argv) {
@@ -76,7 +218,15 @@ int main(int argc, char **argv) {
             simpleInsert();
             break;
         case 1:
-            initYCSB(argv[2], std::atol(argv[3]));
+            Tracer tracer;
+            tracer.startTime();
+            total = std::atol(argv[3]);
+            loadYCSB(argv[2]);
+            cout << "Load time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            initYCSB(std::atoi(argv[4]));
+            cout << "Init time: " << tracer.getRunTime() << endl;
+            freeLoad();
             break;
         default:
             cout << "Parameter needed." << endl;
