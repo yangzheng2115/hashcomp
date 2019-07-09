@@ -9,6 +9,7 @@
 #include "concurrent_hash_table.h"
 #include "basic_hash_table.h"
 #include "atomic_shared_ptr.h"
+#include "universal_hash_table.h"
 
 #define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
@@ -20,7 +21,7 @@
 
 #define TEST_LOOKUP        1
 
-#define COUNT_HASH         1
+#define COUNT_HASH         3
 
 #define DEFAULT_STORE_BASE 100000000
 
@@ -40,6 +41,8 @@ neatlib::BasicHashTable<uint64_t,
         std::hash<uint64_t>,
         std::equal_to<uint64_t>,
         std::allocator<std::pair<const uint64_t, uint64_t>>, 4> *mhash;
+#elif COUNT_HASH == 3
+neatlib::UniversalHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *mhash;
 #else
 neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *mhash;
 #endif
@@ -82,6 +85,8 @@ struct target {
             std::hash<uint64_t>,
             std::equal_to<uint64_t>,
             std::allocator<std::pair<const uint64_t, uint64_t>>, 4> *store;
+#elif COUNT_HASH == 3
+    neatlib::UniversalHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16> *store;
 #else
     neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16> *store;
 #endif
@@ -229,6 +234,8 @@ int main(int argc, char **argv) {
             std::hash<uint64_t>,
             std::equal_to<uint64_t>,
             std::allocator<std::pair<const uint64_t, uint64_t>>, 4>();
+#elif COUNT_HASH == 3
+    mhash = new neatlib::UniversalHashTable<uint64_t, uint64_t, std::hash<size_t>, 4, 16>();
 #else
     mhash = new neatlib::LockFreeHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>(thread_number);
 #endif

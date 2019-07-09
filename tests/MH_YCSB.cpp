@@ -8,6 +8,7 @@
 #include <regex>
 #include <iterator>
 #include <vector>
+#include <functional>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unordered_set>
@@ -206,9 +207,10 @@ void verifyYCSB(int vscale) {
     if (vscale == scale) {
         size_t found = 0;
         size_t missed = 0;
+        equal_to<char *> equalTo;
         for (int i = 0; i < total; i++) {
             pair<char *, char *> kv = mhash->Get(sinput[i]);
-            if (strcmp(kv.first, sinput[i]) != 0) {
+            if (!equalTo(kv.first, sinput[i])) {
                 missed++;
             } else {
                 found++;
