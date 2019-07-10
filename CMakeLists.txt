@@ -28,7 +28,7 @@ include_directories("src/mhash/util")
 include_directories("src/mhash/epoch")
 include_directories("utils")
 
-if (CMAKE_SYSTEM_NAME MATCHES " Darwin")
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     find_package(Boost 1.50.0 REQUIRED COMPONENTS date_time filesystem iostreams)
     include_directories(${Boost_INCLUDE_DIR})
     link_directories(${Boost_LIBRARY_DIR})
@@ -102,7 +102,8 @@ option(WITH_UTILS "build with utils" ON)
 if (WITH_UTILS)
     set(UTILS
             utils/DistributionTool.cpp
-            utils/MicroDistTool.cpp)
+            utils/MicroDistTool.cpp
+            utils/UH_UnitTest.cpp)
 endif ()
 
 find_package(Threads)
