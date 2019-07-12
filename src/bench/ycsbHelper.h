@@ -4,8 +4,11 @@
 #ifndef HASHCOMP_YCSBHELPER_H
 #define HASHCOMP_YCSBHELPER_H
 
+#include <regex>
 #include <stdio.h>
 #include <stdlib.h>
+
+using namespace std;
 
 char *dummy[]{
         "abwerewrsdfrwereweewrewrrewrwerw",

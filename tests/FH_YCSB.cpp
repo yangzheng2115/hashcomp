@@ -6,7 +6,6 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
-#include <regex>
 #include <iterator>
 #include <vector>
 #include <functional>
