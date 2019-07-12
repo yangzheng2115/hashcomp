@@ -94,8 +94,14 @@ void verify() {
 int main(int argc, char **argv) {
 #if defined(__linux__)
     if (sysconf(_SC_NPROCESSORS_ONLN) > 8) {
-        total = 100000000;
-        pdegree = 32;
+        size_t total_num = 100000000;
+        int thread_num = 32;
+        if (argc >= 2) {
+            total_num = std::atol(argv[1]);
+            thread_num = std::atoi(argv[2]);
+        }
+        total = total_num;
+        pdegree = thread_num;
     }
 #endif
 #if !testingFixed
