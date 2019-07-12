@@ -87,7 +87,7 @@ void verifyYCSB(int vscale) {
         equal_to<char *> equalTo;
         for (int i = 0; i < total; i++) {
             pair<char *, char *> kv = mhash->Get(sinput[i]);
-            if (!equalTo(kv.first, sinput[i])) {
+            if (!equalTo(kv.first, sinput[i]) || !equalTo(kv.second, dummy[vscale])) {
                 missed++;
             } else {
                 found++;
@@ -164,6 +164,9 @@ int main(int argc, char **argv) {
             tracer.startTime();
             pinitYCSB(scale);
             cout << "Pinit time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            verifyYCSB(scale);
+            cout << "Search time: " << tracer.getRunTime() << endl;
             tracer.startTime();
             break;
         }
