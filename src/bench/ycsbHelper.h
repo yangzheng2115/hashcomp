@@ -149,7 +149,7 @@ void loadYCSB(char *path, size_t total, char **sinput) {
                 size_t epos = s.find(" ", spos);
                 string os = s.substr(spos - 1, epos - spos + 1);
                 sinput[found] = new char[os.size() + 1];
-                mempcpy(sinput[found++], os.c_str(), os.size());
+                memcpy(sinput[found++], os.c_str(), os.size());
                 //input.push_back(os);
                 //cout << found++ << " " << os << " " << os.size() << endl;
             }
