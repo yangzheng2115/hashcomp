@@ -19,6 +19,9 @@
 
 uint64_t total = 10000;
 int pdegree = 2;
+long total_runtime = 0;
+long max_runtime = 0;
+long min_runtime = std::numeric_limits<long>::max();
 
 #define testingFixed 0
 #if testingFixed
@@ -46,10 +49,13 @@ neatlib::LockFreeHashTable<type, type, std::hash<type>, 4, 4> *store;
 
 struct paramstruct {
     int tid;
+    long runtime = 0;
 };
 
 void *worker(void *args) {
     paramstruct *param = static_cast<paramstruct *>(args);
+    Tracer tracer;
+    tracer.startTime();
     for (int i = param->tid; i < total; i += pdegree) {
 #if testingFixed
         store->Insert(i, i);
@@ -57,9 +63,11 @@ void *worker(void *args) {
         store->Insert(sinput[i], sinput[i]);
 #endif
     }
+    param->runtime = tracer.getRunTime();
 }
 
 void insert() {
+    total_runtime = 0;
     pthread_t threads[pdegree];
     paramstruct params[pdegree];
     for (int i = 0; i < pdegree; i++) {
@@ -68,6 +76,13 @@ void insert() {
     }
     for (int i = 0; i < pdegree; i++) {
         pthread_join(threads[i], nullptr);
+        total_runtime += params[i].runtime;
+        if (params[i].runtime > max_runtime) {
+            max_runtime = params[i].runtime;
+        }
+        if (params[i].runtime < min_runtime) {
+            min_runtime = params[i].runtime;
+        }
     }
 }
 
@@ -126,7 +141,9 @@ int main(int argc, char **argv) {
     Tracer tracer;
     tracer.startTime();
     insert();
-    cout << "Insert: " << tracer.getRunTime() << endl;
+    cout << "Insert: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
+         << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
+         << ((double) total * pdegree / total_runtime) << endl;
     tracer.startTime();
     verify();
     cout << "Verify: " << tracer.getRunTime() << endl;
