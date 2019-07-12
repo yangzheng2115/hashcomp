@@ -4,13 +4,12 @@
 
 #include <iostream>
 #include <sstream>
-#include <chrono>
-#include <regex>
 #include <iterator>
 #include <vector>
 #include <functional>
 #include <unordered_set>
 #include "tracer.h"
+#include "universal_hash_table.h"
 #include "lock_free_hash_table.h"
 #include "concurrent_hash_table.h"
 #include "basic_hash_table.h"
@@ -27,10 +26,10 @@ int paral = 4;
 
 char **sinput;
 
-#define COUNT_HASH         1
+#define COUNT_HASH         0
 
 #if COUNT_HASH == 1
-#define UNSAFE
+//#define UNSAFE
 #ifdef UNSAFE
 neatlib::ConcurrentHashTable<char *, char *,
         std::hash<char *>, 4, 16,
@@ -42,6 +41,10 @@ neatlib::ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16> *mhash;
 #elif COUNT_HASH == 2
 neatlib::BasicHashTable<char *, char *, std::hash<char *>,
         std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4> *mhash;
+#elif COUNT_HASH == 3
+neatlib::UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> *mhash;
+#else
+neatlib::LockFreeHashTable<char *, char *, std::hash<char *>, 4, 16> *mhash;
 #endif
 
 void simpleInsert() {
@@ -63,7 +66,9 @@ void initYCSB(int vscale) {
 void *initYCSB(void *args) {
     threadConfig *conf = static_cast<threadConfig *>(args);
     for (int i = conf->tid; i < total; i += paral) {
-        mhash->Insert(sinput[i], dummy[conf->vscale]);
+        if (!mhash->Insert(sinput[i], dummy[conf->vscale])) {
+            cout << conf->tid << " " << i << endl;
+        }
     }
 }
 
@@ -86,6 +91,7 @@ void verifyYCSB(int vscale) {
         size_t missed = 0;
         equal_to<char *> equalTo;
         for (int i = 0; i < total; i++) {
+            //cout << i << endl;
             pair<char *, char *> kv = mhash->Get(sinput[i]);
             if (!equalTo(kv.first, sinput[i]) || !equalTo(kv.second, dummy[vscale])) {
                 missed++;
@@ -109,25 +115,43 @@ void freeLoad() {
 }
 
 int main(int argc, char **argv) {
-
+    if (argc <= 1) {
+        cout << "Parameter needed." << endl;
+        exit(0);
+    }
+    switch (std::atoi(argv[1])) {
+        case 0:
+            break;
+        case 1: {
+            total = std::atol(argv[3]);
+            scale = std::atoi(argv[4]);
+            break;
+        }
+        case 2: {
+            total = std::atol(argv[3]);
+            scale = std::atoi(argv[4]);
+            paral = std::atoi(argv[5]);
+            break;
+        }
+        default:
+            cout << "Parameter needed." << endl;
+    }
 #if COUNT_HASH == 1
-#define UNSAFE
 #ifdef UNSAFE
     mhash = new neatlib::ConcurrentHashTable<char *, char *,
             std::hash<char *>, 4, 16,
             neatlib::unsafe::atomic_shared_ptr,
             neatlib::unsafe::shared_ptr>();
 #else
-    mhash = new neatlib::ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16> ();
+    mhash = new neatlib::ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16>();
 #endif
 #elif COUNT_HASH == 2
     mhash = new neatlib::BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4>();
+#elif COUNT_HASH == 3
+    mhash = new neatlib::UniversalHashTable<char *, char *, std::hash<char *>, 4, 16>();
+#else
+    mhash = new neatlib::LockFreeHashTable<char *, char *, std::hash<char *>, 4, 16>(paral);
 #endif
-
-    if (argc <= 1) {
-        cout << "Parameter needed." << endl;
-        exit(0);
-    }
     switch (std::atoi(argv[1])) {
         case 0:
             simpleInsert();
@@ -135,8 +159,6 @@ int main(int argc, char **argv) {
         case 1: {
             Tracer tracer;
             tracer.startTime();
-            total = std::atol(argv[3]);
-            scale = std::atoi(argv[4]);
             sinput = new char *[total];
             loadYCSB(argv[2], total, sinput);
             cout << "Load time: " << tracer.getRunTime() << endl;
@@ -155,9 +177,6 @@ int main(int argc, char **argv) {
         case 2: {
             Tracer tracer;
             tracer.startTime();
-            total = std::atol(argv[3]);
-            scale = std::atoi(argv[4]);
-            paral = std::atoi(argv[5]);
             sinput = new char *[total];
             loadYCSB(argv[2], total, sinput);
             cout << "Load time: " << tracer.getRunTime() << endl;
