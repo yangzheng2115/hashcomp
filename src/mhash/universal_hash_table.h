@@ -22,7 +22,7 @@ namespace neatlib {
 template<class Key, class T, class Hash = std::hash<Key>,
         std::size_t HASH_LEVEL = DEFAULT_NEATLIB_HASH_LEVEL,
         std::size_t ROOT_HASH_LEVEL = DEFAULT_NEATLIB_HASH_LEVEL,
-        template<typename/* A, typename D = std::default_delete<A>*/> class ACCESSOR = /*std::unique_ptr*/boost::atomic_shared_ptr,
+        template<typename, typename ...> class ACCESSOR = /*std::unique_ptr*/boost::atomic_shared_ptr,
         template<typename, typename ...> class STACK= /*std::stack*/boost::lockfree::stack>
 class UniversalHashTable {
 private:
@@ -90,22 +90,83 @@ private:
     struct locator {
         CHEAPER_ACCESSOR<node> *loc_ref = nullptr;
 
+        std::size_t root_hash(std::size_t hash) { return hash & (ROOT_ARRAY_SIZE - 1); }
+
         std::size_t level_hash(std::size_t hash, std::size_t level) {
             hash >>= ROOT_HASH_LEVEL;
             level--;
             return util::level_hash<Key>(hash, level, ARRAY_SIZE, HASH_LEVEL);
         }
 
-        const Key &key() {
-            return static_cast<data_node *>(loc_ref->get())->data_.first;
+        const Key &key() { return static_cast<data_node *>(loc_ref->get())->data_.first; }
+
+        const std::pair<const Key, const T> &value() { return static_cast<data_node *>(loc_ref->get())->data_; }
+
+        locator(UniversalHashTable &ht, const Key &key) {
+            std::size_t hash = ht.hasher_(key);
+            std::size_t level = 0;
+            array_node *curr_node = nullptr;
+            for (; level < ht.max_level_; level++) {
+                std::size_t curr_hash = 0;
+                if (level) {
+                    curr_hash = level_hash(hash, level);
+                    loc_ref = curr_node->arr_[curr_hash].load(std::memory_order_release);
+                } else {
+                    curr_hash = root_hash(hash);
+                    loc_ref = ht.root_[curr_hash].load(std::memory_order_release);
+                }
+
+                if (!loc_ref->get()) {
+                    break;
+                } else if (loc_ref->get()->type_ == DATA_NODE) {
+                    if (hash != static_cast<data_node *>(loc_ref->get())->hash_) {
+                        loc_ref = nullptr;
+                    }
+                    break;
+                } else {
+                    curr_node = static_cast<array_node *>(loc_ref->get());
+                }
+            }
         }
 
-        const std::pair<const Key, const T> &value() {
-            return static_cast<data_node *>(loc_ref->get())->data_;
+        locator(UniversalHashTable &ht, const Key &key, const T *mappedp) {
+            std::size_t hash = ht.hasher_(key);
+            std::size_t level = 0;
+            bool end = false;
+            array_node *curr_node = nullptr;
+            for (; level < ht.max_level_ && !end; level++) {
+                std::size_t curr_hash = 0;
+                ACCESSOR<node> *atomic_pos = nullptr;
+                if (level) {
+                    curr_hash = level_hash(hash, level);
+                    loc_ref = curr_node->arr_[curr_hash].load(std::memory_order_release);
+                } else {
+                    curr_hash = root_hash(hash);
+                    loc_ref = ht.root_[curr_hash].load(std::memory_order_release);
+                }
+            }
         }
     };
 
 public:
+    UniversalHashTable() : size_(0) {
+        std::size_t m = 1, num = ARRAY_SIZE, level = 1;
+        std::size_t total_bit = sizeof(Key) * 8;
+        if (total_bit < 64) {
+            for (std::size_t i = 0; i < total_bit; i++)
+                m *= 2;
+            for (; num < m; num += num * ARRAY_SIZE)
+                level++;
+        } else {
+            m = std::numeric_limits<std::size_t>::max();
+            auto m2 = m / 2;
+            for (; num < m2; num += num * ARRAY_SIZE)
+                level++;
+            level++;
+        }
+        max_level_ = level;
+    }
+
     std::pair<const Key, const T> Get(const Key &key) {
         return std::make_pair(static_cast<Key>(0), static_cast<T>(0));
     }
@@ -126,13 +187,13 @@ public:
         return true;
     }
 
-    std::size_t Size() {
-        return size_;
-    }
+    std::size_t Size() { return size_; }
 
 private:
     std::array<ACCESSOR<node>, ROOT_ARRAY_SIZE> root_;
-    std::size_t size_;
+    std::atomic<size_t> size_;
+    Hash hasher_;
+    std::size_t max_level_ = 0;
 };
 }
 

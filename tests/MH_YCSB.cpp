@@ -84,7 +84,6 @@ char *dummy[]{
         "abwerewrsdfrwereweewrewrrewrwerw"
 };
 
-
 char *update[]{
         "werewsdvcxewwrsdfxcvwerwesdfwerw",
         "werewsdvcxewwrsdfxcvwerwesdfwerw"
@@ -155,9 +154,26 @@ size_t total = 100;
 
 int scale = 0;
 
+int paral = 4;
+
 char **sinput;
 
-neatlib::BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4> *mhash;
+#define COUNT_HASH         1
+
+#if COUNT_HASH == 1
+#define UNSAFE
+#ifdef UNSAFE
+neatlib::ConcurrentHashTable<char *, char *,
+        std::hash<char *>, 4, 16,
+        neatlib::unsafe::atomic_shared_ptr,
+        neatlib::unsafe::shared_ptr> *mhash;
+#else
+neatlib::ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16> *mhash;
+#endif
+#elif COUNT_HASH == 2
+neatlib::BasicHashTable<char *, char *, std::hash<char *>,
+        std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4> *mhash;
+#endif
 
 void simpleInsert() {
     for (int i = 0; i < 4; i++) {
@@ -203,6 +219,31 @@ void initYCSB(int vscale) {
     }
 }
 
+struct threadConfig {
+    int tid;
+    int vscale;
+};
+
+void *initYCSB(void *args) {
+    threadConfig *conf = static_cast<threadConfig *>(args);
+    for (int i = conf->tid; i < total; i += paral) {
+        mhash->Insert(sinput[i], dummy[conf->vscale]);
+    }
+}
+
+void pinitYCSB(int vscale) {
+    pthread_t threads[paral];
+    threadConfig confs[paral];
+    for (int i = 0; i < paral; i++) {
+        confs[i].tid = i;
+        confs[i].vscale = vscale;
+        pthread_create(&threads[i], nullptr, initYCSB, &confs[i]);
+    }
+    for (int i = 0; i < paral; i++) {
+        pthread_join(threads[i], nullptr);
+    }
+}
+
 void verifyYCSB(int vscale) {
     if (vscale == scale) {
         size_t found = 0;
@@ -232,7 +273,21 @@ void freeLoad() {
 }
 
 int main(int argc, char **argv) {
+
+#if COUNT_HASH == 1
+#define UNSAFE
+#ifdef UNSAFE
+    mhash = new neatlib::ConcurrentHashTable<char *, char *,
+            std::hash<char *>, 4, 16,
+            neatlib::unsafe::atomic_shared_ptr,
+            neatlib::unsafe::shared_ptr>();
+#else
+    mhash = new neatlib::ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16> ();
+#endif
+#elif COUNT_HASH == 2
     mhash = new neatlib::BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>, std::allocator<std::pair<const char *, char *>>, 4>();
+#endif
+
     if (argc <= 1) {
         cout << "Parameter needed." << endl;
         exit(0);
@@ -241,7 +296,7 @@ int main(int argc, char **argv) {
         case 0:
             simpleInsert();
             break;
-        case 1:
+        case 1: {
             Tracer tracer;
             tracer.startTime();
             total = std::atol(argv[3]);
@@ -259,6 +314,21 @@ int main(int argc, char **argv) {
             cout << "Update time: " << tracer.getRunTime() << endl;
             freeLoad();
             break;
+        }
+        case 2: {
+            Tracer tracer;
+            tracer.startTime();
+            total = std::atol(argv[3]);
+            scale = std::atoi(argv[4]);
+            paral = std::atoi(argv[5]);
+            loadYCSB(argv[2]);
+            cout << "Load time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            pinitYCSB(scale);
+            cout << "Pinit time: " << tracer.getRunTime() << endl;
+            tracer.startTime();
+            break;
+        }
         default:
             cout << "Parameter needed." << endl;
     }
