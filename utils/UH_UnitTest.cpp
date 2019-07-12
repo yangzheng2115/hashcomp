@@ -9,6 +9,7 @@
 #include <boost/lockfree/stack.hpp>
 #include "tracer.h"
 #include "universal_hash_table.h"
+#include "ycsbHelper.h"
 
 #if defined(__linux__)
 
@@ -19,70 +20,6 @@
 using namespace std;
 using namespace boost;
 using namespace neatlib;
-
-char *dummy[]{
-        "abwerewrsdfrwereweewrewrrewrwerw",
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw",
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw",
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw",
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-        "abwerewrsdfrwereweewrewrrewrwerw"
-};
 
 void simpleOperationTests() {
     UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> mhash;
