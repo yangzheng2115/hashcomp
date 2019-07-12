@@ -16,7 +16,7 @@
 
 #define TEST_LOOKUP        0
 
-#define DEFAULT_STORE_BASE 100000000
+#define DEFAULT_STORE_BASE 1000000000LLU
 
 using namespace FASTER::api;
 
