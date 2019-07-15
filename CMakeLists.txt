@@ -26,6 +26,7 @@ include_directories("src/faster/api")
 include_directories("src/mhash")
 include_directories("src/mhash/util")
 include_directories("src/mhash/epoch")
+include_directories("src/xhash")
 include_directories("utils")
 
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
@@ -55,6 +56,13 @@ else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration -Wdiscarded-qualifiers")
 endif ()
 
+set(XH_LIBS
+        src/xhash/global.cpp
+        src/xhash/helper.cpp
+        #src/xhash/table.cpp
+        src/xhash/mem_alloc.cpp
+        src/xhash/index_hash.cpp)
+
 set(LH_LIBS
         src/levelhash/hash.c
         src/levelhash/level_hashing.c
@@ -78,6 +86,12 @@ endif ()
 set(MH_LIBS
         src/mhash/epoch/faster/lss_allocator.cc
         src/mhash/epoch/faster/thread.cc)
+
+option(WITH_XH_TEST "build with xhtests" ON)
+if (WITH_XH_TEST)
+    set(XH_TEST
+            utils/XH_UnitTest.cpp)
+endif ()
 
 option(WITH_LH_TESTS "build with lhests" ON)
 if (WITH_LH_TESTS)
@@ -109,6 +123,19 @@ if (WITH_UTILS)
 endif ()
 
 find_package(Threads)
+
+set(XH_TESTS_EXES ${XH_TEST})
+foreach (sourcefile ${XH_TESTS_EXES})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${XH_LIBS})
+    set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+            PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+            OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+            )
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+endforeach (sourcefile ${XH_TESTS_EXES})
 
 set(LH_TESTS_EXES ${LH_TEST})
 foreach (sourcefile ${LH_TESTS_EXES})

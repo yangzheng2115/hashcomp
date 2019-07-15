@@ -139,10 +139,29 @@ private:
                 ACCESSOR<node> *atomic_pos = nullptr;
                 if (level) {
                     curr_hash = level_hash(hash, level);
-                    loc_ref = curr_node->arr_[curr_hash].load(std::memory_order_release);
+                    atomic_pos = curr_node->arr_[curr_hash];
+                    loc_ref = atomic_pos->load(std::memory_order_release);
                 } else {
                     curr_hash = root_hash(hash);
-                    loc_ref = ht.root_[curr_hash].load(std::memory_order_release);
+                    atomic_pos = ht.root_[curr_hash];
+                    loc_ref = atomic_pos->load(std::memory_order_release);
+                }
+
+                if (!loc_ref->get()) {
+                    loc_ref = nullptr;
+                    break;
+                } else if (loc_ref->get()->type_ == DATA_NODE) {
+                    // Update/Delete bottleneck here.
+                    if (!mappedp) {
+                        while (atomic_pos->compare_exchange_strong(loc_ref, nullptr));
+                    } else {
+                        atomic<T *> currentp = nullptr;
+                        do {
+                            currentp = static_cast<data_node *>(loc_ref->get())->data_.second;
+                        } while (currentp.compare_exchange_strong(loc_ref->get()));
+                    }
+                } else {
+                    curr_node = static_cast<array_node *>(loc_ref->get());
                 }
             }
         }
