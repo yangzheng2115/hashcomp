@@ -15,3 +15,7 @@ UInt32 g_init_parallelism = INIT_PARALLELISM;
 
 bool volatile warmup_finish = false;
 bool volatile enable_thread_mem_pool = false;
+
+// For xt.
+
+bool g_mem_pad = MEM_PAD;

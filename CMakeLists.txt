@@ -63,6 +63,13 @@ set(XH_LIBS
         src/xhash/mem_alloc.cpp
         src/xhash/index_hash.cpp)
 
+set(XT_LIBS
+        src/xhash/global.cpp
+        src/xhash/helper.cpp
+        #src/xhash/table.cpp
+        src/xhash/mem_alloc.cpp
+        src/xhash/index_btree.cpp)
+
 set(LH_LIBS
         src/levelhash/hash.c
         src/levelhash/level_hashing.c
@@ -91,6 +98,12 @@ option(WITH_XH_TEST "build with xhtests" ON)
 if (WITH_XH_TEST)
     set(XH_TEST
             utils/XH_UnitTest.cpp)
+endif ()
+
+option(WITH_XT_TEST "build with xttests" ON)
+if (WITH_XT_TEST)
+    set(XT_TEST
+            utils/XT_UnitTest.cpp)
 endif ()
 
 option(WITH_LH_TESTS "build with lhests" ON)
@@ -136,6 +149,19 @@ foreach (sourcefile ${XH_TESTS_EXES})
             )
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${XH_TESTS_EXES})
+
+set(XT_TESTS_EXES ${XT_TEST})
+foreach (sourcefile ${XT_TESTS_EXES})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${XT_LIBS})
+    set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+            PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+            OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+            )
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+endforeach (sourcefile ${XT_TESTS_EXES})
 
 set(LH_TESTS_EXES ${LH_TEST})
 foreach (sourcefile ${LH_TESTS_EXES})

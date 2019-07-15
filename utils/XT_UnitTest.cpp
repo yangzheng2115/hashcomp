@@ -5,19 +5,19 @@
 #include <algorithm>
 #include <functional>
 #include "tracer.h"
-#include "index_hash.h"
+#include "index_btree.h"
 
 using namespace std;
 
 uint64_t total = 1000000;
 int pdegree = 2;
-int simple = 0;
+int simple = 1;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 
 uint64_t *loads = nullptr;
-IndexHash *xh;
+index_btree *xh;
 
 void initLoads() {
     g_thread_cnt = 1;
@@ -33,10 +33,9 @@ void initLoads() {
 void simpleOperationTests() {
     Tracer tracer;
     tracer.startTime();
-    IndexHash *xh = (IndexHash *) _mm_malloc(sizeof(IndexHash), 64);
-    new(xh) IndexHash();
-    xh->init(total * 2, g_part_cnt);
-    //xh->init(g_part_cnt, nullptr, 10000000LLU);
+    index_btree *xh = (index_btree *) _mm_malloc(sizeof(index_btree), 64);
+    new(xh) index_btree();
+    xh->init(1);
     cout << "Table init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
@@ -68,7 +67,7 @@ void simpleOperationTests() {
 
 struct paramstruct {
     int tid;
-    IndexHash *xh;
+    index_btree *xh;
     long runtime = 0;
 };
 
@@ -127,9 +126,8 @@ int main(int argc, char **argv) {
     cout << "Init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
-    xh = (IndexHash *) _mm_malloc(sizeof(IndexHash), 64);
-    new(xh) IndexHash();
-    xh->init(total * 2, g_part_cnt);
+    xh = (index_btree *) _mm_malloc(sizeof(index_btree), 64);
+    xh->init(1);
 
     cout << "Table init: " << tracer.getRunTime() << endl;
     tracer.startTime();

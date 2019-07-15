@@ -47,4 +47,22 @@ enum RC {
     RCOK, Commit, Abort, WAIT, ERROR, FINISH
 };
 
+// For xt.
+
+#define TPCC                        2
+#define BTREE_ORDER                 16
+#define MEM_PAD                     true
+#define ENABLE_LATCH                false
+#define WORKLOAD                    TPCC
+
+extern bool g_mem_pad;
+
+enum latch_t {
+    LATCH_EX, LATCH_SH, LATCH_NONE
+};
+
+enum idx_acc_t {
+    INDEX_INSERT, INDEX_READ, INDEX_NONE
+};
+
 #endif //HASHCOMP_GLOBAL_H
