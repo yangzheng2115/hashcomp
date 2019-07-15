@@ -72,7 +72,7 @@ struct paramstruct {
     long runtime = 0;
 };
 
-void *worker(void *args) {
+void *insertWorker(void *args) {
     paramstruct *param = static_cast<paramstruct *>(args);
     Tracer tracer;
     tracer.startTime();
@@ -97,7 +97,46 @@ void insert() {
     for (int i = 0; i < pdegree; i++) {
         params[i].tid = i;
         params[i].xh = xh;
-        pthread_create(&threads[i], nullptr, worker, &params[i]);
+        pthread_create(&threads[i], nullptr, insertWorker, &params[i]);
+    }
+
+    for (int i = 0; i < pdegree; i++) {
+        pthread_join(threads[i], nullptr);
+        total_runtime += params[i].runtime;
+        if (params[i].runtime > max_runtime) {
+            max_runtime = params[i].runtime;
+        }
+        if (params[i].runtime < min_runtime) {
+            min_runtime = params[i].runtime;
+        }
+    }
+}
+
+void *searchWorker(void *args) {
+    paramstruct *param = static_cast<paramstruct *>(args);
+    Tracer tracer;
+    tracer.startTime();
+    for (int i = param->tid; i < total; i += pdegree) {
+        itemid_t *m_item;
+        xh->index_read(loads[i], m_item, 0, -1);
+        if (*((uint64_t *) m_item->location) != loads[i]) {
+            cout << loads[i] << " " << m_item->valid << " " << *((uint64_t *) m_item->location) << endl;
+        }
+    }
+    param->runtime = tracer.getRunTime();
+}
+
+void search() {
+    total_runtime = 0;
+    max_runtime = 0;
+    min_runtime = std::numeric_limits<long>::max();
+    pthread_t threads[pdegree];
+    paramstruct params[pdegree];
+
+    for (int i = 0; i < pdegree; i++) {
+        params[i].tid = i;
+        params[i].xh = xh;
+        pthread_create(&threads[i], nullptr, searchWorker, &params[i]);
     }
 
     for (int i = 0; i < pdegree; i++) {
@@ -141,6 +180,17 @@ int main(int argc, char **argv) {
     }
 
     cout << "Insert: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
+         << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
+         << ((double) total * pdegree / total_runtime) << endl;
+
+
+    tracer.startTime();
+
+    if (!simple) {
+        search();
+    }
+
+    cout << "Search: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total * pdegree / total_runtime) << endl;
 
