@@ -11,7 +11,7 @@ using namespace std;
 
 uint64_t total = 1000000;
 int pdegree = 2;
-int simple = 1;
+int simple = 0;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
@@ -127,6 +127,7 @@ int main(int argc, char **argv) {
     tracer.startTime();
 
     xh = (index_btree *) _mm_malloc(sizeof(index_btree), 64);
+    new(xh) index_btree();
     xh->init(1);
 
     cout << "Table init: " << tracer.getRunTime() << endl;

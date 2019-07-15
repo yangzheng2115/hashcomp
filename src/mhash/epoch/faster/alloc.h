@@ -7,6 +7,10 @@
 
 #ifdef _WIN32
 #include <malloc.h>
+#elif defined(__APPLE__)
+
+#include <boost/align/aligned_alloc.hpp>
+
 #endif
 
 namespace FASTER {
@@ -17,8 +21,10 @@ namespace core {
 inline void *aligned_alloc(size_t alignment, size_t size) {
 #ifdef _WIN32
     return _aligned_malloc(size, alignment);
-#else
+#elif defined(linux)
     return ::aligned_alloc(alignment, size);
+#else
+    return boost::alignment::aligned_alloc(alignment, size);
 #endif
 }
 

@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <mm_malloc.h>
+#include <pthread.h>
 #include "mem_alloc.h"
 
 #define NOGRAPHITE                  1
