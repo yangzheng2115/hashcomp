@@ -17,6 +17,7 @@ long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 
 uint64_t *loads = nullptr;
+IndexHash *xh;
 
 void initLoads() {
     g_thread_cnt = 1;
@@ -89,9 +90,6 @@ void *worker(void *args) {
 }
 
 void insert() {
-    IndexHash *xh = (IndexHash *) _mm_malloc(sizeof(IndexHash), 64);
-    new(xh) IndexHash();
-    xh->init(1000000000LLU, g_part_cnt);
     total_runtime = 0;
     pthread_t threads[pdegree];
     paramstruct params[pdegree];
@@ -129,6 +127,13 @@ int main(int argc, char **argv) {
     cout << "Init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
+    xh = (IndexHash *) _mm_malloc(sizeof(IndexHash), 64);
+    new(xh) IndexHash();
+    xh->init(1000000000LLU, g_part_cnt);
+
+    cout << "Table init: " << tracer.getRunTime() << endl;
+    tracer.startTime();
+
     if (simple) {
         simpleOperationTests();
     } else {
@@ -138,5 +143,8 @@ int main(int argc, char **argv) {
     cout << "Insert: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total * pdegree / total_runtime) << endl;
+
+    delete xh;
+    delete[] loads;
     return 0;
 }
