@@ -13,6 +13,9 @@ using namespace pmwcas;
 uint64_t total = 1000000;
 int pdegree = 2;
 int simple = 0;
+int pagesize = 0;
+int split = 0;
+int reserve = 0;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
@@ -33,6 +36,8 @@ void initLoads() {
 void simpleOperationTests() {
     Tracer tracer;
     tracer.startTime();
+    pmwcas::DescriptorPool *pool = new pmwcas::DescriptorPool(total, 1, false);
+    bztree::BzTree::ParameterSet *param = new bztree::BzTree::ParameterSet(split, reserve, total);
     BzTree *zt = bztree::BzTree::New(*param, pool);
     cout << "Table init: " << tracer.getRunTime() << endl;
     tracer.startTime();
@@ -100,24 +105,29 @@ int main(int argc, char **argv) {
         total = std::atol(argv[1]);
         pdegree = std::atoi(argv[2]);
         simple = std::atoi(argv[3]);
+        pagesize = std::atoi(argv[4]);
+        split = pagesize * 3 / 4;
+        reserve = pagesize - split;
     }
 
-    pmwcas::InitLibrary(pmwcas::DefaultAllocator::Create,
-                        pmwcas::DefaultAllocator::Destroy,
-                        pmwcas::LinuxEnvironment::Create,
-                        pmwcas::LinuxEnvironment::Destroy);
-    pool = new pmwcas::DescriptorPool(2000, 1, false);
-    param = new bztree::BzTree::ParameterSet(256, 128, 256);
-
-    cout << "Thread: " << pdegree << " total: " << total << endl;
+    cout << "Thread: " << pdegree << " total: " << total << " page: " << pagesize << " split: " << split << " reserve: "
+         << reserve << endl;
 
     Tracer tracer;
     tracer.startTime();
     initLoads();
     cout << "Init: " << tracer.getRunTime() << endl;
     tracer.startTime();
+    pmwcas::InitLibrary(pmwcas::DefaultAllocator::Create,
+                        pmwcas::DefaultAllocator::Destroy,
+                        pmwcas::LinuxEnvironment::Create,
+                        pmwcas::LinuxEnvironment::Destroy);
+    pool = new pmwcas::DescriptorPool(total, pdegree, false);
+    param = new bztree::BzTree::ParameterSet(split, reserve, pagesize);
+    cout << "Memory init: " << tracer.getRunTime() << endl;
+    tracer.startTime();
     zt = bztree::BzTree::New(*param, pool);
-    cout << "Table init: " << tracer.getRunTime() << endl;
+    cout << "Tree init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
     if (simple) {
@@ -129,7 +139,6 @@ int main(int argc, char **argv) {
     cout << "Insert: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total * pdegree / total_runtime) << endl;
-
 
     delete zt;
     delete[] loads;
