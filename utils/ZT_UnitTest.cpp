@@ -17,6 +17,7 @@ int pagesize = 0;
 int split = 0;
 int reserve = 0;
 long total_runtime = 0;
+long total_counter = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 atomic<int> stopMeasure(0);
@@ -63,6 +64,7 @@ struct paramstruct {
     int tid;
     BzTree *zt;
     long runtime = 0;
+    long counter = 0;
 };
 
 void *insertWorker(void *args) {
@@ -110,6 +112,7 @@ void *updateWorker(void *args) {
         for (int i = param->tid; i < total; i += pdegree) {
             std::string key = std::to_string(i);
             param->zt->Update(key.c_str(), key.size(), total - i);
+            param->counter++;
         }
     }
 
@@ -126,6 +129,7 @@ void *searchWorker(void *args) {
             std::string key = std::to_string(i);
             uint64_t *payload;
             param->zt->Read(key.c_str(), key.size(), payload);
+            param->counter++;
         }
     }
 
@@ -134,6 +138,7 @@ void *searchWorker(void *args) {
 
 void upSearch(bool insert) {
     total_runtime = 0;
+    total_counter = 0;
     min_runtime = 0;
     max_runtime = 0;
     pthread_t threads[pdegree];
@@ -159,6 +164,7 @@ void upSearch(bool insert) {
     for (int i = 0; i < pdegree; i++) {
         pthread_join(threads[i], nullptr);
         total_runtime += params[i].runtime;
+        total_counter += params[i].counter;
         if (params[i].runtime > max_runtime) {
             max_runtime = params[i].runtime;
         }
@@ -214,7 +220,7 @@ int main(int argc, char **argv) {
 
     cout << "Update: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
-         << ((double) total * pdegree / total_runtime) << endl;
+         << ((double) total_counter * pdegree / total_runtime) << endl;
 
     if (!simple) {
         upSearch(false);
@@ -222,7 +228,7 @@ int main(int argc, char **argv) {
 
     cout << "Search: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
-         << ((double) total * pdegree / total_runtime) << endl;
+         << ((double) total_counter * pdegree / total_runtime) << endl;
 
     delete zt;
     delete[] loads;
