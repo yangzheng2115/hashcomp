@@ -116,7 +116,23 @@ void *updateWorker(void *args) {
     param->runtime = tracer.getRunTime();
 }
 
-void update() {
+void *searchWorker(void *args) {
+    paramstruct *param = static_cast<paramstruct *>(args);
+    Tracer tracer;
+    tracer.startTime();
+
+    while (stopMeasure.load(memory_order_relaxed) == 0) {
+        for (int i = param->tid; i < total; i += pdegree) {
+            std::string key = std::to_string(i);
+            uint64_t *payload;
+            param->zt->Read(key.c_str(), key.size(), payload);
+        }
+    }
+
+    param->runtime = tracer.getRunTime();
+}
+
+void upSearch(bool insert) {
     total_runtime = 0;
     min_runtime = 0;
     max_runtime = 0;
@@ -129,7 +145,11 @@ void update() {
     for (int i = 0; i < pdegree; i++) {
         params[i].tid = i;
         params[i].zt = zt;
-        pthread_create(&threads[i], nullptr, updateWorker, &params[i]);
+        if (insert) {
+            pthread_create(&threads[i], nullptr, updateWorker, &params[i]);
+        } else {
+            pthread_create(&threads[i], nullptr, searchWorker, &params[i]);
+        }
     }
     while (timer.elapsedSeconds() < default_timer_range) {
         sleep(1);
@@ -189,10 +209,18 @@ int main(int argc, char **argv) {
          << ((double) total * pdegree / total_runtime) << endl;
 
     if (!simple) {
-        update();
+        upSearch(true);
     }
 
     cout << "Update: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
+         << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
+         << ((double) total * pdegree / total_runtime) << endl;
+
+    if (!simple) {
+        upSearch(false);
+    }
+
+    cout << "Search: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total * pdegree / total_runtime) << endl;
 
