@@ -19,6 +19,7 @@ int reserve = 0;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
+atomic<int> stopMeasure(0);
 
 uint64_t *loads = nullptr;
 pmwcas::DescriptorPool *pool;
@@ -105,9 +106,11 @@ void *updateWorker(void *args) {
     Tracer tracer;
     tracer.startTime();
 
-    for (int i = param->tid; i < total; i += pdegree) {
-        std::string key = std::to_string(i);
-        param->zt->Update(key.c_str(), key.size(), total - i);
+    while (stopMeasure.load(memory_order_relaxed) == 0) {
+        for (int i = param->tid; i < total; i += pdegree) {
+            std::string key = std::to_string(i);
+            param->zt->Update(key.c_str(), key.size(), total - i);
+        }
     }
 
     param->runtime = tracer.getRunTime();
@@ -120,11 +123,18 @@ void update() {
     pthread_t threads[pdegree];
     paramstruct params[pdegree];
 
+    Timer timer;
+    timer.start();
+
     for (int i = 0; i < pdegree; i++) {
         params[i].tid = i;
         params[i].zt = zt;
         pthread_create(&threads[i], nullptr, updateWorker, &params[i]);
     }
+    while (timer.elapsedSeconds() < default_timer_range) {
+        sleep(1);
+    }
+    stopMeasure.store(1, memory_order_relaxed);
 
     for (int i = 0; i < pdegree; i++) {
         pthread_join(threads[i], nullptr);
