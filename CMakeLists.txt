@@ -51,6 +51,16 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(AIO -laio)
     set(UUID -luuid)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration")
+    include_directories("./src/bztree")
+    add_subdirectory("./src/bztree" "${CMAKE_CURRENT_BINARY_DIR}/bztree")
+    set(PMWCAS_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/src/bztree/pmwcas")
+    message(${PMWCAS_PREFIX})
+    include_directories(
+            ${PMWCAS_PREFIX}/src/PMWCAS
+            ${PMWCAS_PREFIX}/src/PMWCAS/src/
+            ${PMWCAS_PREFIX}/src/PMWCAS/include
+            ${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/include
+    )
 else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wincompatible-pointer-types -Wint-conversion")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration -Wdiscarded-qualifiers")
@@ -103,7 +113,8 @@ endif ()
 option(WITH_XT_TEST "build with xttests" ON)
 if (WITH_XT_TEST)
     set(XT_TEST
-            utils/XT_UnitTest.cpp)
+            utils/XT_UnitTest.cpp
+            utils/ZT_UnitTest.cpp)
 endif ()
 
 option(WITH_LH_TESTS "build with lhests" ON)
