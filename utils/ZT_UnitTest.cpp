@@ -64,7 +64,7 @@ struct paramstruct {
     long runtime = 0;
 };
 
-void *worker(void *args) {
+void *insertWorker(void *args) {
     paramstruct *param = static_cast<paramstruct *>(args);
     Tracer tracer;
     tracer.startTime();
@@ -85,7 +85,45 @@ void insert() {
     for (int i = 0; i < pdegree; i++) {
         params[i].tid = i;
         params[i].zt = zt;
-        pthread_create(&threads[i], nullptr, worker, &params[i]);
+        pthread_create(&threads[i], nullptr, insertWorker, &params[i]);
+    }
+
+    for (int i = 0; i < pdegree; i++) {
+        pthread_join(threads[i], nullptr);
+        total_runtime += params[i].runtime;
+        if (params[i].runtime > max_runtime) {
+            max_runtime = params[i].runtime;
+        }
+        if (params[i].runtime < min_runtime) {
+            min_runtime = params[i].runtime;
+        }
+    }
+}
+
+void *updateWorker(void *args) {
+    paramstruct *param = static_cast<paramstruct *>(args);
+    Tracer tracer;
+    tracer.startTime();
+
+    for (int i = param->tid; i < total; i += pdegree) {
+        std::string key = std::to_string(i);
+        param->zt->Update(key.c_str(), key.size(), total - i);
+    }
+
+    param->runtime = tracer.getRunTime();
+}
+
+void update() {
+    total_runtime = 0;
+    min_runtime = 0;
+    max_runtime = 0;
+    pthread_t threads[pdegree];
+    paramstruct params[pdegree];
+
+    for (int i = 0; i < pdegree; i++) {
+        params[i].tid = i;
+        params[i].zt = zt;
+        pthread_create(&threads[i], nullptr, updateWorker, &params[i]);
     }
 
     for (int i = 0; i < pdegree; i++) {
@@ -137,6 +175,14 @@ int main(int argc, char **argv) {
     }
 
     cout << "Insert: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
+         << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
+         << ((double) total * pdegree / total_runtime) << endl;
+
+    if (!simple) {
+        update();
+    }
+
+    cout << "Update: " << tracer.getRunTime() << " minTime: " << min_runtime << " maxTime: " << max_runtime
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total * pdegree / total_runtime) << endl;
 
