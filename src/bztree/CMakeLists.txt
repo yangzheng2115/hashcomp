@@ -10,7 +10,6 @@ project(bztree)
 # in directly to PMwCAS which provides persistence support.
 set(PMEM_BACKEND "PMDK" CACHE STRING "Persistent memory backend type")
 string(TOUPPER ${PMEM_BACKEND} PMEM_BACKEND)
-set(PMEM_BACKEND "PMDK")
 set(GOOGLE_FRAMEWORK "OFF")
 
 if (${PMEM_BACKEND} STREQUAL "PMDK")
@@ -102,3 +101,41 @@ target_compile_definitions(bztree PRIVATE MAX_FREEZE_RETRY=${MAX_FREEZE_RETRY})
 set(ENABLE_MERGE 0 CACHE STRING "MAX retry on frozen node")
 message(STATUS "ENABLE_MERGE: " ${ENABLE_MERGE})
 target_compile_definitions(bztree PRIVATE ENABLE_MERGE=${ENABLE_MERGE})
+
+## The followings are parent referencing codes.
+#if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+#    include(ExternalProject)
+#    set(PMEM_BACKEND "PMDK")
+#    include_directories("src/bztree")
+#    add_subdirectory("src/bztree")
+#    set(PMWCAS_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/bztree/pmwcas")
+#    option(WITH_ZT_TEST "build with xttests" ON)
+#    if (WITH_ZT_TEST)
+#        message("${PMWCAS_PREFIX} ${WITH_ZT_TEST}")
+#        set(ZT_LIBS "-L./bztree -lbztree")
+#        set(PMWCAS_LIBS "-lpmwcas -lrt -lnuma")
+#        include_directories(
+#                ${PMWCAS_PREFIX}/src/PMWCAS
+#                ${PMWCAS_PREFIX}/src/PMWCAS/src/
+#                ${PMWCAS_PREFIX}/src/PMWCAS/include
+#                ${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/include
+#        )
+#        link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/)
+#        set(ZT_TEST
+#                utils/ZT_UnitTest.cpp)
+#    endif ()
+#
+#    set(ZT_TESTS_EXES ${ZT_TEST})
+#    foreach (sourcefile ${ZT_TESTS_EXES})
+#        get_filename_component(exename ${sourcefile} NAME_WE)
+#        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+#        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} bztree)
+#        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+#                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+#                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+#                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+#                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+#                )
+#        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${ZT_LIBS} ${PMWCAS_LIBS})
+#    endforeach (sourcefile ${ZT_TESTS_EXES})
+#endif ()

@@ -51,16 +51,6 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(AIO -laio)
     set(UUID -luuid)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration")
-    include_directories("./src/bztree")
-    add_subdirectory("./src/bztree" "${CMAKE_CURRENT_BINARY_DIR}/bztree")
-    set(PMWCAS_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/src/bztree/pmwcas")
-    message(${PMWCAS_PREFIX})
-    include_directories(
-            ${PMWCAS_PREFIX}/src/PMWCAS
-            ${PMWCAS_PREFIX}/src/PMWCAS/src/
-            ${PMWCAS_PREFIX}/src/PMWCAS/include
-            ${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/include
-    )
 else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wincompatible-pointer-types -Wint-conversion")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration -Wdiscarded-qualifiers")
@@ -113,8 +103,7 @@ endif ()
 option(WITH_XT_TEST "build with xttests" ON)
 if (WITH_XT_TEST)
     set(XT_TEST
-            utils/XT_UnitTest.cpp
-            utils/ZT_UnitTest.cpp)
+            utils/XT_UnitTest.cpp)
 endif ()
 
 option(WITH_LH_TESTS "build with lhests" ON)
@@ -225,3 +214,100 @@ foreach (sourcefile ${UTILS_EXES})
             )
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${UTILS_EXES})
+
+option(WITH_ZT_TEST "build with xttests" ON)
+if (WITH_ZT_TEST)
+    include_directories("src/bztree")
+    include(ExternalProject)
+    set(PMEM_BACKEND "PMDK" CACHE STRING "Persistent memory backend type")
+    string(TOUPPER ${PMEM_BACKEND} PMEM_BACKEND)
+    set(GOOGLE_FRAMEWORK "OFF")
+
+    if (${PMEM_BACKEND} STREQUAL "PMDK")
+        add_definitions(-DPMEM)
+        add_definitions(-DPMDK)
+        message(STATUS "Persistence support: PMDK")
+    elseif (${PMEM_BACKEND} STREQUAL "EMU")
+        add_definitions(-DPMEM)
+        add_definitions(-DPMEMEMU)
+        message(STATUS "Persistence support: emulation")
+    elseif (${PMEM_BACKEND} STREQUAL "VOLATILE")
+        message(STATUS "Persistence support: off")
+    else ()
+        message(FATAL_ERROR "Unsupported persistent memory backend: ${PMEM_BACKEND}")
+    endif ()
+
+    ##################### PMwCAS #########################
+    add_definitions(-DDESC_CAP=16)
+    set(PMWCAS_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/pmwcas")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "PMWCAS_PREFIX: ${PMWCAS_PREFIX}")
+    ExternalProject_Add(PMWCAS
+            PREFIX "${PMWCAS_PREFIX}"
+            GIT_REPOSITORY https://github.com/HaoPatrick/pmwcas.git
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE)
+            CMAKE_ARGS -DPMEM_BACKEND=${PMEM_BACKEND} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DDESC_CAP=16 -DBUILD_APPS=${BUILD_TESTS} -DGOOGLE_FRAMEWORK=${GOOGLE_FRAMEWORK}
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+
+    # PMwCAS and PMDK paths
+    include_directories(
+            ${PMWCAS_PREFIX}/src/PMWCAS
+            ${PMWCAS_PREFIX}/src/PMWCAS/src/
+            ${PMWCAS_PREFIX}/src/PMWCAS/include
+            ${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/include
+    )
+
+    link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
+    if (${PMEM_BACKEND} STREQUAL "PMDK")
+        set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
+        if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
+        else ()
+            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/nondebug)
+        endif ()
+    endif ()
+    link_libraries(${LINK_FLAGS})
+
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+
+    if (${CMAKE_BUILD_TYPE} STREQUAL "Profile")
+        add_compile_definitions("PROFILE")
+        link_libraries("-lprofiler")
+    elseif (${CMAKE_BUILD_TYPE} STREQUAL "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native")
+    endif ()
+
+    set(ZT_LIBS
+            src/bztree/bztree.cpp)
+
+    set(ZT_TEST
+            utils/ZT_UnitTest.cpp)
+
+    set(PMWCAS_LIBS "-lpmwcas -lrt -lnuma")
+
+    set(ZT_TESTS_EXES ${ZT_TEST})
+    set(MAX_FREEZE_RETRY 1 CACHE STRING "MAX retry on frozen node")
+    set(ENABLE_MERGE 0 CACHE STRING "MAX retry on frozen node")
+    message(STATUS "ENABLE_MERGE: " ${ENABLE_MERGE})
+    foreach (sourcefile ${ZT_TESTS_EXES})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${ZT_LIBS})
+        target_compile_definitions(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} PRIVATE ENABLE_MERGE=${ENABLE_MERGE})
+        target_compile_definitions(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} PRIVATE MAX_FREEZE_RETRY=${MAX_FREEZE_RETRY})
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} PMWCAS)
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${PMWCAS_LIBS})
+    endforeach (sourcefile ${ZT_TESTS_EXES})
+endif ()

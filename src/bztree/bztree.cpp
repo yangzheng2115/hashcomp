@@ -792,7 +792,7 @@ ReturnCode LeafNode::Read(const char *key, uint16_t key_size, uint64_t *payload,
     }
 
     char *source_addr = (reinterpret_cast<char *>(this) + meta.GetOffset());
-    *payload = reinterpret_cast<pmwcas::MwcTargetField <uint64_t> *>(
+    *payload = reinterpret_cast<pmwcas::MwcTargetField<uint64_t> *>(
             source_addr + meta.GetPaddedKeyLength())->GetValueProtected();
     return ReturnCode::Ok();
 }
@@ -1396,10 +1396,8 @@ bool LeafNode::PrepareForSplit(Stack &stack,
     // TODO(tzwang): also put the new insert here to save some cycles
     auto left_end_it = meta_vec.begin() + nleft;
 #ifdef PMDK
-    (Allocator::Get()->GetDirect(*left))->CopyFrom(this, meta_vec.begin(),
-                                                   left_end_it, pmwcas_pool->GetEpoch());
-    (Allocator::Get()->GetDirect(*right))->CopyFrom(this, left_end_it,
-                                                    meta_vec.end(), pmwcas_pool->GetEpoch());
+    (Allocator::Get()->GetDirect(*left))->CopyFrom(this, meta_vec.begin(), left_end_it, pmwcas_pool->GetEpoch());
+    (Allocator::Get()->GetDirect(*right))->CopyFrom(this, left_end_it, meta_vec.end(), pmwcas_pool->GetEpoch());
 #else
     (*left)->CopyFrom(this, meta_vec.begin(), left_end_it, pmwcas_pool->GetEpoch());
     (*right)->CopyFrom(this, left_end_it, meta_vec.end(), pmwcas_pool->GetEpoch());
@@ -1445,9 +1443,7 @@ bool LeafNode::PrepareForSplit(Stack &stack,
     }
 }
 
-BaseNode *BzTree::TraverseToNode(bztree::Stack *stack,
-                                 const char *key, uint16_t key_size,
-                                 bztree::BaseNode *stop_at,
+BaseNode *BzTree::TraverseToNode(bztree::Stack *stack, const char *key, uint16_t key_size, bztree::BaseNode *stop_at,
                                  bool le_child) {
     BaseNode *node = GetRootNodeSafe();
     if (stack) {
@@ -1468,9 +1464,7 @@ BaseNode *BzTree::TraverseToNode(bztree::Stack *stack,
     return node;
 }
 
-LeafNode *BzTree::TraverseToLeaf(Stack *stack, const char *key,
-                                 uint16_t key_size,
-                                 bool le_child) {
+LeafNode *BzTree::TraverseToLeaf(Stack *stack, const char *key, uint16_t key_size, bool le_child) {
     static const uint32_t kCacheLineSize = 64;
     BaseNode *node = GetRootNodeSafe();
     __builtin_prefetch((const void *) (root), 0, 3);
@@ -1602,9 +1596,9 @@ ReturnCode BzTree::Insert(const char *key, uint16_t key_size, uint64_t payload) 
             // parent and install the pointer to the new parent.
 #ifdef PMDK
             auto result = grand_parent->Update(
-                top->node->GetMetadata(top->meta_index),
-                Allocator::Get()->GetOffset(old_parent),
-                reinterpret_cast<InternalNode *>(*ptr_parent), pd, GetPMWCASPool());
+                    top->node->GetMetadata(top->meta_index),
+                    Allocator::Get()->GetOffset(old_parent),
+                    reinterpret_cast<InternalNode *>(*ptr_parent), pd, GetPMWCASPool());
 #else
             auto result = grand_parent->Update(
                     top->node->GetMetadata(top->meta_index),
