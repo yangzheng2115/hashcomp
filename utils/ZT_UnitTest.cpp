@@ -127,8 +127,8 @@ void *searchWorker(void *args) {
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = param->tid; i < total; i += pdegree) {
             std::string key = std::to_string(i);
-            uint64_t *payload;
-            param->zt->Read(key.c_str(), key.size(), payload);
+            uint64_t payload;
+            param->zt->Read(key.c_str(), key.size(), &payload);
             param->counter++;
         }
     }
