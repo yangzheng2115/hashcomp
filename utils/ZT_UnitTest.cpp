@@ -147,6 +147,7 @@ void upSearch(bool insert) {
     Timer timer;
     timer.start();
 
+    stopMeasure.store(0, memory_order_relaxed);
     for (int i = 0; i < pdegree; i++) {
         params[i].tid = i;
         params[i].zt = zt;
