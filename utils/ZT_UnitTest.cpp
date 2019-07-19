@@ -38,9 +38,40 @@ void initLoads() {
 void simpleOperationTests() {
     Tracer tracer;
     tracer.startTime();
+#ifdef PMDK
+
+#include <cstdio>
+
+#define TEST_POOL_NAME "pool_bztree"
+#define TEST_LAYOUT_NAME "layout_bztree"
+    struct stat buffer;
+    if (stat(TEST_POOL_NAME, &buffer) == 0) {
+        remove(TEST_POOL_NAME);
+        cout << TEST_POOL_NAME << " has been successfully removed." << endl;
+    }
+
+    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 1024 * 1024 * 1024),
+                        pmwcas::PMDKAllocator::Destroy,
+                        pmwcas::LinuxEnvironment::Create,
+                        pmwcas::LinuxEnvironment::Destroy);
+
+    auto pmdk_allocator = reinterpret_cast<pmwcas::PMDKAllocator *>(pmwcas::Allocator::Get());
+    bztree::Allocator::Init(pmdk_allocator);
+
+    cout << "Memory init: " << tracer.getRunTime() << endl;
+    tracer.startTime();
+    zt = reinterpret_cast<bztree::BzTree *>(pmdk_allocator->GetRoot(sizeof(bztree::BzTree)));
+    pmwcas::DescriptorPool *pool;
+    pmdk_allocator->Allocate((void **) &pool, sizeof(pmwcas::DescriptorPool));
+    new(pool) pmwcas::DescriptorPool(total, 1, false);
+
+    bztree::BzTree::ParameterSet param(split, reserve, pagesize);
+    new(zt)bztree::BzTree(param, pool, reinterpret_cast<uint64_t>(pmdk_allocator->GetPool()));
+#else
     pmwcas::DescriptorPool *pool = new pmwcas::DescriptorPool(total, 1, false);
     bztree::BzTree::ParameterSet *param = new bztree::BzTree::ParameterSet(split, reserve, total);
     BzTree *zt = bztree::BzTree::New(*param, pool);
+#endif
     cout << "Table init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
@@ -193,15 +224,47 @@ int main(int argc, char **argv) {
     initLoads();
     cout << "Init: " << tracer.getRunTime() << endl;
     tracer.startTime();
+
+#ifdef PMDK
+
+#include <cstdio>
+
+#define TEST_POOL_NAME "pool_bztree"
+#define TEST_LAYOUT_NAME "layout_bztree"
+    struct stat buffer;
+    if (stat(TEST_POOL_NAME, &buffer) == 0) {
+        remove(TEST_POOL_NAME);
+        cout << TEST_POOL_NAME << " has been successfully removed." << endl;
+    }
+
+    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 1024 * 1024 * 1024),
+                        pmwcas::PMDKAllocator::Destroy,
+                        pmwcas::LinuxEnvironment::Create,
+                        pmwcas::LinuxEnvironment::Destroy);
+
+    auto pmdk_allocator = reinterpret_cast<pmwcas::PMDKAllocator *>(pmwcas::Allocator::Get());
+    bztree::Allocator::Init(pmdk_allocator);
+
+    cout << "Memory init: " << tracer.getRunTime() << endl;
+    tracer.startTime();
+    zt = reinterpret_cast<bztree::BzTree *>(pmdk_allocator->GetRoot(sizeof(bztree::BzTree)));
+    pmwcas::DescriptorPool *pool;
+    pmdk_allocator->Allocate((void **) &pool, sizeof(pmwcas::DescriptorPool));
+    new(pool) pmwcas::DescriptorPool(total, pdegree, false);
+
+    bztree::BzTree::ParameterSet param(split, reserve, pagesize);
+    new(zt)bztree::BzTree(param, pool, reinterpret_cast<uint64_t>(pmdk_allocator->GetPool()));
+#else
     pmwcas::InitLibrary(pmwcas::DefaultAllocator::Create,
                         pmwcas::DefaultAllocator::Destroy,
                         pmwcas::LinuxEnvironment::Create,
                         pmwcas::LinuxEnvironment::Destroy);
     pool = new pmwcas::DescriptorPool(total, pdegree, false);
-    param = new bztree::BzTree::ParameterSet(split, reserve, pagesize);
     cout << "Memory init: " << tracer.getRunTime() << endl;
     tracer.startTime();
+    param = new bztree::BzTree::ParameterSet(split, reserve, pagesize);
     zt = bztree::BzTree::New(*param, pool);
+#endif
     cout << "Tree init: " << tracer.getRunTime() << endl;
     tracer.startTime();
 
