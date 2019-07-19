@@ -215,7 +215,10 @@ foreach (sourcefile ${UTILS_EXES})
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${UTILS_EXES})
 
-option(WITH_ZT_TEST "build with xttests" ON)
+if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1)
+    option(WITH_ZT_TEST "build with xttests" ON)
+endif ()
+
 if (WITH_ZT_TEST)
     include_directories("src/bztree")
     include(ExternalProject)
