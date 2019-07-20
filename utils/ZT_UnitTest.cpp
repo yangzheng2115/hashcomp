@@ -113,6 +113,8 @@ void *insertWorker(void *args) {
 
 void insert() {
     total_runtime = 0;
+    total_counter = 0;
+    min_runtime = std::numeric_limits<long>::max();
     pthread_t threads[pdegree];
     paramstruct params[pdegree];
 
@@ -170,7 +172,7 @@ void *searchWorker(void *args) {
 void upSearch(bool insert) {
     total_runtime = 0;
     total_counter = 0;
-    min_runtime = 0;
+    min_runtime = std::numeric_limits<long>::max();
     max_runtime = 0;
     pthread_t threads[pdegree];
     paramstruct params[pdegree];
