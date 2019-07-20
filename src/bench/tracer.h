@@ -39,7 +39,8 @@ public:
     }
 
     long fetchTime() {
-        duration = (endTime.tv_sec - begTime.tv_sec) * 1000000 + endTime.tv_usec - begTime.tv_usec << endl;
+        gettimeofday(&endTime, nullptr);
+        duration = (endTime.tv_sec - begTime.tv_sec) * 1000000 + endTime.tv_usec - begTime.tv_usec;
         return duration;
     }
 };
