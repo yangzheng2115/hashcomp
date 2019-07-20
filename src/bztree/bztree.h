@@ -521,13 +521,11 @@ public:
                   std::vector<RecordMetadata>::iterator end_it,
                   pmwcas::EpochManager *epoch);
 
-    ReturnCode Update(const char *key, uint16_t key_size, uint64_t payload,
-                      pmwcas::DescriptorPool *pmwcas_pool);
+    ReturnCode Update(const char *key, uint16_t key_size, uint64_t payload, pmwcas::DescriptorPool *pmwcas_pool);
 
     ReturnCode Delete(const char *key, uint16_t key_size, pmwcas::DescriptorPool *pmwcas_pool);
 
-    ReturnCode Read(const char *key, uint16_t key_size, uint64_t *payload,
-                    pmwcas::DescriptorPool *pmwcas_pool);
+    ReturnCode Read(const char *key, uint16_t key_size, uint64_t *payload, pmwcas::DescriptorPool *pmwcas_pool);
 
     ReturnCode RangeScanByKey(const char *key1,
                               uint32_t size1,

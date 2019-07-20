@@ -11,7 +11,6 @@
 #include "atomic_shared_ptr.h"
 #include "universal_hash_table.h"
 
-#define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
 #define DEFAULT_KEYS_RANGE (1 << 2)

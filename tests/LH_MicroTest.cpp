@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include "level_hashing.h"
 
-#define DEFAULT_HASH_LEVEL (25)
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
 #define DEFAULT_KEYS_RANGE (1 << 2)
@@ -49,6 +48,14 @@ struct target *parms;
 
 using namespace std;
 
+int level_calculate(size_t count) {
+    int ret = 0;
+    while (count >>= 1) {
+        ret++;
+    }
+    return ret + 1;
+}
+
 void prepare() {
     cout << "prepare" << endl;
     workers = new pthread_t[thread_number];
@@ -71,7 +78,7 @@ void restart() {
     cout << "\tdestroy" << endl;
     level_destroy(levelHash);
     cout << "\treinit" << endl;
-    levelHash = level_init(DEFAULT_HASH_LEVEL);
+    levelHash = level_init(level_calculate(key_range));
     for (int i = 0; i < thread_number; i++) {
         parms[i].levelHash = levelHash;
     }
@@ -234,7 +241,7 @@ int main(int argc, char **argv) {
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint8_t *) calloc(DEFAULT_KEY_LENGTH * total_count, sizeof(uint8_t));
     UniformGen<uint8_t>::generate(loads, DEFAULT_KEY_LENGTH, key_range, total_count);
-    levelHash = level_init(DEFAULT_HASH_LEVEL);
+    levelHash = level_init(level_calculate(key_range));
     cout << "simple" << endl;
     simpleInsert();
     prepare();
