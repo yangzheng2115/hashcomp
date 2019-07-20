@@ -50,7 +50,7 @@ void simpleOperationTests() {
         cout << TEST_POOL_NAME << " has been successfully removed." << endl;
     }
 
-    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 1024 * 1024 * 1024),
+    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 4LLU * 1024 * 1024 * 1024),
                         pmwcas::PMDKAllocator::Destroy,
                         pmwcas::LinuxEnvironment::Create,
                         pmwcas::LinuxEnvironment::Destroy);
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
         cout << TEST_POOL_NAME << " has been successfully removed." << endl;
     }
 
-    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 1024 * 1024 * 1024),
+    pmwcas::InitLibrary(pmwcas::PMDKAllocator::Create(TEST_POOL_NAME, TEST_LAYOUT_NAME, 4LLU * 1024 * 1024 * 1024),
                         pmwcas::PMDKAllocator::Destroy,
                         pmwcas::LinuxEnvironment::Create,
                         pmwcas::LinuxEnvironment::Destroy);
