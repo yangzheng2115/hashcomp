@@ -294,7 +294,11 @@ int main(int argc, char **argv) {
          << " avgTime: " << ((double) total_runtime / pdegree) << " avgTpt: "
          << ((double) total_counter * pdegree / total_runtime) << endl;
 
+#ifdef PMDK
+    pmwcas::Thread::ClearRegistry(true);
+#else
     delete zt;
+#endif
     delete[] loads;
     return 0;
 }
