@@ -39,7 +39,7 @@ public:
     }
 
     long fetchTime() {
-        cout << (endTime.tv_sec - begTime.tv_sec) * 1000000 + endTime.tv_usec - begTime.tv_usec << endl;
+        duration = (endTime.tv_sec - begTime.tv_sec) * 1000000 + endTime.tv_usec - begTime.tv_usec << endl;
         return duration;
     }
 };
