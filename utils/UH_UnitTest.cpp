@@ -28,20 +28,44 @@ using namespace neatlib;
 
 uint64_t total = 10000000;
 int pdegree = 4;
-int simple = 1;
+int simple = 0;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 
 void simpleOperationTests() {
-    char *left = "abcde";
-    char *middle = "abcd";
-    char *right = "abcde";
-    std::hash<char *> hasher;
-    std::equal_to<char *> et;
+    const char *cleft = "Meet the new boss...";
+    const char *cmiddle = "Meet the new boss";
+    const char *cright = "Meet the new boss...";
+    std::hash<const char *> chasher;
+    std::equal_to<const char *> cet;
+    cout << chasher(cleft) << " " << chasher(cright) << " " << chasher(cmiddle) << endl;
+    cout << cet(cleft, cright) << " " << cet(cleft, cmiddle) << " " << true << endl;
+
+    string sleft("Meet the new boss...");
+    string smiddle("Meet the new boss");
+    string sright("Meet the new boss...");
+    const char *ccleft = sleft.c_str();
+    const char *ccmiddle = smiddle.c_str();
+    const char *ccright = sright.c_str();
+    std::hash<const char *> cchasher;
+    std::equal_to<const char *> ccet;
+    cout << chasher(ccleft) << " " << chasher(ccright) << " " << chasher(ccmiddle) << endl;
+    cout << cchasher(ccleft) << " " << cchasher(ccright) << " " << cchasher(ccmiddle) << endl;
+    cout << ccet(ccleft, ccright) << " " << ccet(ccleft, ccmiddle) << " " << true << endl;
+    cout << strcmp(cleft, ccleft) << " " << std::strcmp(cleft, ccleft) << " " << std::strcmp(cleft, cmiddle) << " "
+         << std::strcmp(cmiddle, cleft) << " " << (int) '.' << endl;
+
+    string left = "Meet the new boss...";
+    string middle = "Meet the new boss";
+    string right = "Meet the new boss...";
+    std::hash<string> hasher;
+    std::equal_to<string> et;
+    cout << hasher(left.c_str()) << " " << hasher(right.c_str()) << " " << hasher(middle.c_str()) << endl;
     cout << hasher(left) << " " << hasher(right) << " " << hasher(middle) << endl;
     cout << et(left, right) << " " << et(left, middle) << " " << true << endl;
 
+    // Notice here that uint64_t cannot generate random hash key.
     uint64_t ileft = 123456789LLU;
     uint64_t imiddle = 1234567890LLU;
     uint64_t iright = 123456789LLU;
@@ -123,7 +147,7 @@ void newWorker(bool inBatch, int tid) {
                 cursor = 0;
             }
             loads[i] = new(cache + cursor)datanode(i, i);
-            if (i == tid)
+            if (i == (pdegree - 1) && (pdegree - 1) == tid)
                 cout << loads[i]->get().first << " " << loads[i]->hash() << " " << hasher(i) << endl;
         }
         for (int i = 0; i < total; i++) {
