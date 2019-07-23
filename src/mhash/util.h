@@ -38,6 +38,8 @@ namespace std {
 
 namespace neatlib {
 
+static const int REGISTRY_MAX_THREADS = 128;
+
 constexpr std::size_t DEFAULT_NEATLIB_HASH_LEVEL = 4;
 
 template<std::size_t B>

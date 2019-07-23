@@ -542,9 +542,8 @@ bool FasterKv<K, V, D>::HasConflictingEntry(KeyHash hash, const HashBucket *buck
 }
 
 template<class K, class V, class D>
-inline AtomicHashBucketEntry *FasterKv<K, V, D>::FindOrCreateEntry(KeyHash hash,
-                                                                   HashBucketEntry &expected_entry,
-                                                                   HashBucket *&bucket) {
+inline AtomicHashBucketEntry *
+FasterKv<K, V, D>::FindOrCreateEntry(KeyHash hash, HashBucketEntry &expected_entry, HashBucket *&bucket) {
     bucket = nullptr;
     // Truncate the hash to get a bucket page_index < state[version].size.
     uint32_t version = resize_info_.version;
@@ -554,8 +553,7 @@ inline AtomicHashBucketEntry *FasterKv<K, V, D>::FindOrCreateEntry(KeyHash hash,
         bucket = &state_[version].bucket(hash);
         assert(reinterpret_cast<size_t>(bucket) % Constants::kCacheLineBytes == 0);
 
-        AtomicHashBucketEntry *atomic_entry = FindTentativeEntry(hash, bucket, version,
-                                                                 expected_entry);
+        AtomicHashBucketEntry *atomic_entry = FindTentativeEntry(hash, bucket, version, expected_entry);
         if (expected_entry != HashBucketEntry::kInvalidEntry) {
             // Found an existing hash bucket entry; nothing further to check.
             return atomic_entry;

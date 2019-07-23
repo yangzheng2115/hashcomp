@@ -189,8 +189,7 @@ private:
                         if (!remove_flag) {
                             tmp_ptr.reset(static_cast<node *>(new data_node(key, *mappedp, hash)));
                         }
-                        if (atomic_pos->compare_exchange_strong(loc_ref_,
-                                                                tmp_ptr)) {
+                        if (atomic_pos->compare_exchange_strong(loc_ref_, tmp_ptr)) {
                             // CAS succeeds means a successful insertion
                             loc_ref_ = std::move(tmp_ptr);
                             end = true;
