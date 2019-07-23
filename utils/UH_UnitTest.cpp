@@ -24,6 +24,7 @@ using namespace boost;
 using namespace neatlib;
 
 #define VARIANT_FIELD 1
+#define CACHE_RESERVE (1 << 8)
 
 uint64_t total = 100000000;
 int pdegree = 4;
@@ -100,6 +101,46 @@ void boostStackVSstdStack(bool usingStd) {
     }
 }
 
+void newWorker(bool inBatch) {
+    typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
+    datanode **loads = new datanode *[total];
+    if (inBatch) {
+        datanode *cache;
+        size_t cursor = CACHE_RESERVE;
+        for (int i = 0; i < total; i++) {
+            if (cursor == CACHE_RESERVE) {
+                cache = static_cast<datanode *>(malloc(sizeof(datanode) * CACHE_RESERVE));
+                cursor = 0;
+            }
+            loads[i] = new(cache + cursor)datanode(i, i, sizeof(uint64_t));
+        }
+        for (int i = 0; i < total; i++) {
+            loads[i]->~datanode();
+        }
+        for (int i = cursor; i < CACHE_RESERVE; i++) {
+            cache[i].~datanode();
+        }
+    } else {
+        for (int i = 0; i < total; i++) {
+            loads[i] = new datanode(i, i, sizeof(uint64_t));
+        }
+        for (int i = 0; i < total; i++) {
+            delete loads[i];
+        }
+    }
+    delete[] loads;
+}
+
+void concurrentDataAllocate(bool inBatch) {
+    std::vector<std::thread> workers;
+    for (int t = 0; t < pdegree; t++) {
+        workers.push_back(std::thread(newWorker, inBatch));
+    }
+    for (int t = 0; t < pdegree; t++) {
+        workers[t].join();
+    }
+}
+
 struct paramstruct {
     int tid;
 #if VARIANT_FIELD
@@ -167,6 +208,7 @@ int main(int argc, char **argv) {
         pdegree = std::atoi(argv[2]);
         simple = std::atoi(argv[3]);
     }
+    cout << total << " " << pdegree << " " << simple << endl;
     Tracer tracer;
     tracer.startTime();
     if (simple) {
@@ -175,6 +217,12 @@ int main(int argc, char **argv) {
         insert();
     }
     cout << "Ist: " << tracer.getRunTime() << endl;
+    tracer.startTime();
+    concurrentDataAllocate(false);
+    cout << "new: " << tracer.getRunTime() << endl;
+    tracer.startTime();
+    concurrentDataAllocate(true);
+    cout << "bew: " << tracer.getRunTime() << endl;
 #if defined(__linux__)
     cout << "CPUs: " << sysconf(_SC_NPROCESSORS_ONLN) << endl;
     if (sysconf(_SC_NPROCESSORS_ONLN) > 8) {

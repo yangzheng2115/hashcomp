@@ -18,6 +18,8 @@
 #include <boost/smart_ptr/atomic_shared_ptr.hpp>
 #include <boost/lockfree/stack.hpp>
 
+#define COARSE_RESERVIOR 1
+
 namespace neatlib {
 class ThreadRegistry;
 
@@ -120,6 +122,7 @@ private:
         explicit node(node_type type) : type_(type) {}
     };
 
+public:
     class data_node : node {
         const std::pair<const Key, const T> data_;
         const std::size_t hash_;
@@ -130,9 +133,12 @@ private:
         data_node(const Key &key, const T &mapped, const std::size_t h) : node(node_type::DATA_NODE),
                                                                           data_(key, mapped), hash_(h) {}
 
+        ~data_node() {}
+
         std::size_t hash() const { return hash_; }
     };
 
+private:
     class array_node : node {
         std::array<ACCESSOR<node>, ARRAY_SIZE> arr_;
     public:
@@ -140,6 +146,10 @@ private:
 
         constexpr static std::size_t size() { return ARRAY_SIZE; }
     };
+
+    //static data_node *reserviors[REGISTRY_MAX_THREADS];
+
+    //static size_t thread_reservior_cursor[REGISTRY_MAX_THREADS];
 
     class reserved_pool {
         STACK<ACCESSOR<data_node>> data_st_;
@@ -235,7 +245,16 @@ private:
                     if (!mappedp) {
                         while (atomic_pos->compare_exchange_strong(loc_ref, nullptr));
                     } else {
+#if COARSE_RESERVIOR
+                        /* if (thread_reservior_cursor[tid] == ARRAY_SIZE) {
+                             reserviors[tid] = new data_node[ARRAY_SIZE];
+                         }
+                         tmp_ptr.reset(
+                                 static_cast<data_node *>(new(reserviors[tid][thread_reservior_cursor[tid]])data_node(
+                                         key, *mappedp, hash)));*/
+#else
                         tmp_ptr.reset(static_cast<node *>(new data_node(key, *mappedp, hash)));
+#endif
                         atomic<T *> currentp = nullptr;
                         do {
                             currentp = static_cast<data_node *>(loc_ref->get())->data_.second;
@@ -265,6 +284,10 @@ public:
             level++;
         }
         max_level_ = level;
+        /*for (int i = 0; i < REGISTRY_MAX_THREADS; i++) {
+            reserviors[i] = static_cast<data_node *>(malloc(sizeof(data_node) * ARRAY_SIZE));
+            thread_reservior_cursor[i] = ARRAY_SIZE;
+        }*/
     }
 
     std::pair<const Key, const T> Get(const Key &key) {
