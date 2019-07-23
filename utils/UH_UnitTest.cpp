@@ -8,6 +8,8 @@
 #include <thread>
 #include <boost/lockfree/stack.hpp>
 #include "tracer.h"
+#include "basic_hash_table.h"
+#include "concurrent_hash_table.h"
 #include "universal_hash_table.h"
 #include "ycsbHelper.h"
 
@@ -22,9 +24,25 @@ using namespace boost;
 using namespace neatlib;
 
 void simpleOperationTests() {
-    UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> mhash;
+    char *left = "abcde";
+    char *middle = "abcd";
+    char *right = "abcde";
+    std::hash<char *> hasher;
+    std::equal_to<char *> et;
+    cout << hasher(left) << " " << hasher(right) << " " << hasher(middle) << endl;
+    cout << et(left, right) << " " << et(left, middle) << " " << true << endl;
+    UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> uhash;
     for (int i = 0; i < 5; i++) {
-        mhash.Insert(dummy[i], dummy[i]);
+        uhash.Insert(dummy[i], dummy[i]);
+    }
+    ConcurrentHashTable<char *, char *, std::hash<char *>, 4, 16> chash;
+    for (int i = 0; i < 5; i++) {
+        chash.Insert(dummy[i], dummy[i]);
+    }
+    BasicHashTable<char *, char *, std::hash<char *>, std::equal_to<char *>,
+            std::allocator<std::pair<const char *, char *>>, 4> bhash;
+    for (int i = 0; i < 5; i++) {
+        bhash.Insert(dummy[i], dummy[i]);
     }
 }
 
