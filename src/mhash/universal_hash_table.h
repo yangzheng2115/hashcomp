@@ -135,6 +135,8 @@ public:
 
         ~data_node() {}
 
+        const std::pair<const Key, const T> &get() { return data_; }
+
         std::size_t hash() const { return hash_; }
     };
 

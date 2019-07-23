@@ -26,9 +26,9 @@ using namespace neatlib;
 #define VARIANT_FIELD 1
 #define CACHE_RESERVE (1 << 8)
 
-uint64_t total = 100000000;
+uint64_t total = 10000000;
 int pdegree = 4;
-int simple = 0;
+int simple = 1;
 long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
@@ -41,6 +41,15 @@ void simpleOperationTests() {
     std::equal_to<char *> et;
     cout << hasher(left) << " " << hasher(right) << " " << hasher(middle) << endl;
     cout << et(left, right) << " " << et(left, middle) << " " << true << endl;
+
+    uint64_t ileft = 123456789LLU;
+    uint64_t imiddle = 1234567890LLU;
+    uint64_t iright = 123456789LLU;
+    std::hash<uint64_t> ihasher;
+    std::equal_to<uint64_t> iet;
+    cout << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
+    cout << iet(ileft, iright) << " " << iet(ileft, imiddle) << " " << true << endl;
+
     UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> uhash;
     for (int i = 0; i < 5; i++) {
         uhash.Insert(dummy[i], dummy[i]);
@@ -101,20 +110,24 @@ void boostStackVSstdStack(bool usingStd) {
     }
 }
 
-void newWorker(bool inBatch) {
+void newWorker(bool inBatch, int tid) {
     typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
     datanode **loads = new datanode *[total];
     if (inBatch) {
         datanode *cache;
         size_t cursor = CACHE_RESERVE;
+        std::hash<uint64_t> hasher;
         for (int i = 0; i < total; i++) {
             if (cursor == CACHE_RESERVE) {
                 cache = static_cast<datanode *>(malloc(sizeof(datanode) * CACHE_RESERVE));
                 cursor = 0;
             }
-            loads[i] = new(cache + cursor)datanode(i, i, sizeof(uint64_t));
+            loads[i] = new(cache + cursor)datanode(i, i);
+            if (i == tid)
+                cout << loads[i]->get().first << " " << loads[i]->hash() << " " << hasher(i) << endl;
         }
         for (int i = 0; i < total; i++) {
+            // Not very sure whether loads[i] can be deleted here.
             loads[i]->~datanode();
         }
         for (int i = cursor; i < CACHE_RESERVE; i++) {
@@ -134,7 +147,7 @@ void newWorker(bool inBatch) {
 void concurrentDataAllocate(bool inBatch) {
     std::vector<std::thread> workers;
     for (int t = 0; t < pdegree; t++) {
-        workers.push_back(std::thread(newWorker, inBatch));
+        workers.push_back(std::thread(newWorker, inBatch, t));
     }
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
