@@ -7,7 +7,6 @@
 #include <stack>
 #include <thread>
 #include <unordered_set>
-#include <tr1/functional>
 #include <boost/functional/hash/hash.hpp>
 #include <boost/lockfree/stack.hpp>
 #include "tracer.h"
@@ -19,9 +18,10 @@
 #include "hasher.h"
 
 #if defined(__linux__)
-
+#include <tr1/functional>
 #include <cpuid.h>
-
+#else
+#define stdHasher boost::hash_detail::hash_value_unsigned<uint64_t>
 #endif
 
 using namespace std;
@@ -127,16 +127,19 @@ void simpleOperationTests() {
     std::equal_to<uint64_t> iet;
     mhasher<uint64_t> imet;
     boost::hash<uint64_t> bhet;
-    typedef boost::hash_detail::basic_numbers<uint64_t>::type bet;
     std::size_t seed = 40343;
     using bchash = boost::hash_detail::hash_base<uint64_t>;
+
+#if defined(__linux__)
+    typedef boost::hash_detail::basic_numbers<uint64_t>::type bet;
     std::tr1::hash<uint64_t> thasher;
     //bchash(seed, 123);
-
-    cout << "shash: " << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
     cout << "thash: " << thasher(ileft) << " " << thasher(iright) << " " << thasher(imiddle) << endl;
-    cout << "hhash: " << bhet(ileft) << " " << bhet(iright) << " " << bhet(imiddle) << endl;
     cout << "bhash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
+#endif
+    cout << "dhash: " << stdHasher(ileft) << " " << stdHasher(iright) << " " << stdHasher(imiddle) << endl;
+    cout << "shash: " << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
+    cout << "hhash: " << bhet(ileft) << " " << bhet(iright) << " " << bhet(imiddle) << endl;
     //cout << "bchash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
     cout << "mhash: " << imet(ileft) << " " << imet(iright) << " " << imet(imiddle) << endl;
     cout << "equal: " << iet(ileft, iright) << " " << iet(ileft, imiddle) << " " << true << endl;
@@ -187,11 +190,13 @@ void mhasherTests(bool init = true) {
 }
 
 void boostHasherTests() {
-    typedef boost::hash_detail::basic_numbers<uint64_t>::type hasher;
+#if defined(__linux__)
+    typedef boost::hash_detail::basic_numbers<uint64_t>::type stdHasher;
+#endif
     unordered_set<uint64_t> umap;
     for (auto key: input) {
         //umap.insert(hasher.hash(key));
-        uint64_t gk = hasher(key);
+        uint64_t gk = stdHasher(key);
         if (gk == -1) {
             umap.insert(gk);
         }
