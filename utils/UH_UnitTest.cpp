@@ -7,6 +7,8 @@
 #include <stack>
 #include <thread>
 #include <unordered_set>
+#include <tr1/functional>
+#include <boost/functional/hash/hash.hpp>
 #include <boost/lockfree/stack.hpp>
 #include "tracer.h"
 #include "basic_hash_table.h"
@@ -124,9 +126,20 @@ void simpleOperationTests() {
     std::hash<uint64_t> ihasher;
     std::equal_to<uint64_t> iet;
     mhasher<uint64_t> imet;
-    cout << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
-    cout << imet.hash(ileft) << " " << imet.hash(iright) << " " << imet.hash(imiddle) << endl;
-    cout << iet(ileft, iright) << " " << iet(ileft, imiddle) << " " << true << endl;
+    boost::hash<uint64_t> bhet;
+    typedef boost::hash_detail::basic_numbers<uint64_t>::type bet;
+    std::size_t seed = 40343;
+    using bchash = boost::hash_detail::hash_base<uint64_t>;
+    std::tr1::hash<uint64_t> thasher;
+    //bchash(seed, 123);
+
+    cout << "shash: " << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
+    cout << "thash: " << thasher(ileft) << " " << thasher(iright) << " " << thasher(imiddle) << endl;
+    cout << "hhash: " << bhet(ileft) << " " << bhet(iright) << " " << bhet(imiddle) << endl;
+    cout << "bhash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
+    //cout << "bchash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
+    cout << "mhash: " << imet(ileft) << " " << imet(iright) << " " << imet(imiddle) << endl;
+    cout << "equal: " << iet(ileft, iright) << " " << iet(ileft, imiddle) << " " << true << endl;
 
     UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> uhash;
     for (int i = 0; i < 5; i++) {
@@ -170,6 +183,18 @@ void mhasherTests(bool init = true) {
             umap.insert(gk);
         }
         cout << "\tSet vrf: " << tracer.getRunTime() << " with " << umap.size() << endl;
+    }
+}
+
+void boostHasherTests() {
+    typedef boost::hash_detail::basic_numbers<uint64_t>::type hasher;
+    unordered_set<uint64_t> umap;
+    for (auto key: input) {
+        //umap.insert(hasher.hash(key));
+        uint64_t gk = hasher(key);
+        if (gk == -1) {
+            umap.insert(gk);
+        }
     }
 }
 

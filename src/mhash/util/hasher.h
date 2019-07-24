@@ -68,6 +68,10 @@ public:
         }
         return static_cast<size_t >(-1);
     }
+
+    uint64_t operator()(T t) {
+        return hash(t);
+    }
 };
 
 #endif //HASHCOMP_HASHER_H
