@@ -6,12 +6,15 @@
 #include <iostream>
 #include <stack>
 #include <thread>
+#include <unordered_set>
 #include <boost/lockfree/stack.hpp>
 #include "tracer.h"
 #include "basic_hash_table.h"
 #include "concurrent_hash_table.h"
 #include "universal_hash_table.h"
 #include "ycsbHelper.h"
+#include "hash.h"
+#include "hasher.h"
 
 #if defined(__linux__)
 
@@ -33,14 +36,56 @@ long total_runtime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 
+bool equalto(const char *left, const char *right) {
+    return left == right;
+}
+
+int strCmp(const char *left, const char *right) {
+    int ret = 0;
+    size_t cursor = 0;
+    while (left[cursor] != 0) {
+        if (right[cursor] == 0) {
+            return left[cursor] - right[cursor];
+        }
+        ret = left[cursor] - right[cursor];
+        cursor++;
+        if (ret != 0) {
+            return ret;
+        }
+    }
+    if (right[cursor++] != 0) {
+        ret = right[cursor] - left[cursor];
+    }
+    return ret;
+}
+
+bool equalTo(const char *left, const char *right) {
+    return strCmp(left, right) == 0;
+}
+
 void simpleOperationTests() {
+    char *vleft = "Meet the new boss...";
+    char *vmiddle = "Meet the new boss";
+    char *vright = (char *) malloc(strlen(vleft) + 1);
+    memcpy(vright, vleft, strlen(vleft));
+    //char *vright = "Meet the new boss...";
+    std::hash<char *> vhasher;
+    std::equal_to<char *> vet;
+    //vright[10] = 'E';
+    cout << std::strlen(vleft) << " " << std::strlen(vright) << endl;
+    cout << vet(vleft, vright) << endl;
+    cout << equalTo(vleft, vright) << endl;
+    cout << vhasher(vleft) << "<->" << (size_t) vleft << endl;
+
+    mhasher<char *> myhasher;
+    cout << myhasher.hash(vmiddle) << "<->" << vleft << endl;
+
     const char *cleft = "Meet the new boss...";
     const char *cmiddle = "Meet the new boss";
     const char *cright = "Meet the new boss...";
     std::hash<const char *> chasher;
     std::equal_to<const char *> cet;
-    cout << chasher(cleft) << " " << chasher(cright) << " " << chasher(cmiddle) << endl;
-    cout << cet(cleft, cright) << " " << cet(cleft, cmiddle) << " " << true << endl;
+
 
     string sleft("Meet the new boss...");
     string smiddle("Meet the new boss");
@@ -50,9 +95,16 @@ void simpleOperationTests() {
     const char *ccright = sright.c_str();
     std::hash<const char *> cchasher;
     std::equal_to<const char *> ccet;
+
+    cout << equalto(ccleft, ccright) << " " << equalTo(ccleft, ccright) << endl;
+
+    cout << chasher(cleft) << " " << chasher(cright) << " " << chasher(cmiddle) << endl;
+    cout << cchasher(cleft) << " " << cchasher(cright) << " " << cchasher(cmiddle) << endl;
     cout << chasher(ccleft) << " " << chasher(ccright) << " " << chasher(ccmiddle) << endl;
     cout << cchasher(ccleft) << " " << cchasher(ccright) << " " << cchasher(ccmiddle) << endl;
-    cout << ccet(ccleft, ccright) << " " << ccet(ccleft, ccmiddle) << " " << true << endl;
+    cout << equalTo(cleft, ccleft) << " " << cet(cleft, cright) << " " << cet(cleft, cmiddle) << " " << true << endl;
+    cout << equalTo(ccleft, ccright) << " " << ccet(ccleft, ccright) << " " << ccet(cleft, ccleft) << " "
+         << ccet(ccleft, ccmiddle) << " " << equalTo(ccleft, ccmiddle) << " " << true << endl;
     cout << strcmp(cleft, ccleft) << " " << std::strcmp(cleft, ccleft) << " " << std::strcmp(cleft, cmiddle) << " "
          << std::strcmp(cmiddle, cleft) << " " << (int) '.' << endl;
 
@@ -71,7 +123,9 @@ void simpleOperationTests() {
     uint64_t iright = 123456789LLU;
     std::hash<uint64_t> ihasher;
     std::equal_to<uint64_t> iet;
+    mhasher<uint64_t> imet;
     cout << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
+    cout << imet.hash(ileft) << " " << imet.hash(iright) << " " << imet.hash(imiddle) << endl;
     cout << iet(ileft, iright) << " " << iet(ileft, imiddle) << " " << true << endl;
 
     UniversalHashTable<char *, char *, std::hash<char *>, 4, 16> uhash;
@@ -87,6 +141,49 @@ void simpleOperationTests() {
     for (int i = 0; i < 5; i++) {
         bhash.Insert(dummy[i], dummy[i]);
     }
+}
+
+vector<uint64_t> input;
+
+void mhasherTests(bool init = true) {
+    Tracer tracer;
+    tracer.startTime();
+    unordered_set<uint64_t> umap;
+    mhasher<uint64_t> hasher;
+    if (init) {
+        for (size_t i = 0; i < (total * 100); i++) {
+            input.push_back(i);
+        }
+        cout << "\tKey gen: " << tracer.getRunTime() << " with " << input.size() << endl;
+    }
+    for (auto key: input) {
+        //umap.insert(hasher.hash(key));
+        uint64_t gk = hasher.hash(key);
+        if (gk == -1) {
+            umap.insert(gk);
+        }
+    }
+    cout << "\tSet gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
+    if (init) {
+        for (auto key: input) {
+            uint64_t gk = hasher.hashy);
+            umap.insert(gk);
+        }
+        cout << "\tSet vrf: " << tracer.getRunTime() << " with " << umap.size() << endl;
+    }
+}
+
+void multiHasherTests() {
+    Tracer tracer;
+    tracer.startTime();
+    std::vector<std::thread> workers;
+    for (int t = 0; t < pdegree; t++) {
+        workers.push_back(std::thread(mhasherTests, false));
+    }
+    for (int t = 0; t < pdegree; t++) {
+        workers[t].join();
+    }
+    cout << "Set gen: " << tracer.getRunTime() << " with " << (input.size() * pdegree) << endl;
 }
 
 /*template<typename S>
@@ -250,6 +347,8 @@ int main(int argc, char **argv) {
     tracer.startTime();
     if (simple) {
         simpleOperationTests();
+        mhasherTests();
+        multiHasherTests();
     } else {
         insert();
     }
