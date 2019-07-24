@@ -166,7 +166,7 @@ void mhasherTests(bool init = true) {
     cout << "\tSet gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
     if (init) {
         for (auto key: input) {
-            uint64_t gk = hasher.hashy);
+            uint64_t gk = hasher.hash(key);
             umap.insert(gk);
         }
         cout << "\tSet vrf: " << tracer.getRunTime() << " with " << umap.size() << endl;
