@@ -18,8 +18,10 @@
 #include "hasher.h"
 
 #if defined(__linux__)
+
 #include <tr1/functional>
 #include <cpuid.h>
+
 #else
 #define stdHasher boost::hash_detail::hash_value_unsigned<uint64_t>
 #endif
@@ -136,8 +138,9 @@ void simpleOperationTests() {
     //bchash(seed, 123);
     cout << "thash: " << thasher(ileft) << " " << thasher(iright) << " " << thasher(imiddle) << endl;
     cout << "bhash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
-#endif
+#else
     cout << "dhash: " << stdHasher(ileft) << " " << stdHasher(iright) << " " << stdHasher(imiddle) << endl;
+#endif
     cout << "shash: " << ihasher(ileft) << " " << ihasher(iright) << " " << ihasher(imiddle) << endl;
     cout << "hhash: " << bhet(ileft) << " " << bhet(iright) << " " << bhet(imiddle) << endl;
     //cout << "bchash: " << bet(ileft) << " " << bet(iright) << " " << bet(imiddle) << endl;
