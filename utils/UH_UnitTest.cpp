@@ -189,6 +189,21 @@ void mhasherTests(bool init = true) {
             umap.insert(gk);
         }
         cout << "\tSet vrf: " << tracer.getRunTime() << " with " << umap.size() << endl;
+#define HISTGRAM_BINS 1024
+        size_t histgram[HISTGRAM_BINS];
+        cout << "********** " << sizeof(histgram) << endl;
+        std::memset(histgram, 0, sizeof(histgram));
+        for (auto key: input) {
+            size_t idx = hasher.hash(key) / (std::numeric_limits<size_t>::max() / HISTGRAM_BINS);
+            histgram[idx]++;
+        }
+        for (int i = 0; i < HISTGRAM_BINS; i++) {
+            cout << histgram[i] << "\t";
+            if ((i + 1) % 16 == 0) {
+                cout << endl;
+            }
+        }
+        cout << "\tHst gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
     }
 }
 
