@@ -5,6 +5,22 @@
 #ifndef HASHCOMP_HASHER_H
 #define HASHCOMP_HASHER_H
 
+#include "City.h"
+#include "MurmurHash1.h"
+#include "MurmurHash2.h"
+#include "MurmurHash3.h"
+
+#define MHASHER     0
+#define MURMURHASH1 1
+#define MURMURHASH2 2
+#define MURMURHASH3 3
+#define CITYHASH    4
+
+#ifndef HASHFUNC
+#define HASHFUNC    CITYHASH
+#endif
+
+
 template<typename T>
 struct mhasher {
     inline uint64_t Rotr64(uint64_t x, std::size_t n) {
@@ -54,6 +70,52 @@ struct mhasher {
         return Rotr64(kMagicNum * hashState, 6);
     }
 
+    inline uint64_t GetHashCodeMur1(uint64_t key) {
+        uint64_t seed = 40343;
+        const uint64_t *pk = &key;
+        return MurmurHash1Aligned(pk, sizeof(uint64_t), seed); // 0xb6d99cf8
+    }
+
+    inline uint64_t GetHashCodeMur2(uint64_t key) {
+        uint64_t seed = 40343;
+        const uint64_t *pk = &key;
+        return MurmurHash64B(pk, sizeof(uint64_t), seed);
+    }
+
+    inline uint64_t GetHashCodeMur3(uint64_t key) {
+        uint64_t seed = 40343;
+        uint64_t hash_otpt[2] = {0};
+        const uint64_t *pk = &key;
+        MurmurHash3_x64_128(pk, sizeof(uint64_t), seed, hash_otpt); // 0xb6d99cf8
+        return *hash_otpt;
+    }
+
+    inline uint64_t GetHashCodeCityHash(uint64_t key) {
+        uint64_t seed = 40343;
+        uint64_t hash_otpt[2] = {0};
+        const char *pk = (const char *) &key;
+        return CityHash64WithSeed(pk, sizeof(uint64_t), 40343);
+    }
+
+    inline uint64_t HashBytesMur1(const char *str) {
+        return MurmurHash1Aligned(str, std::strlen(str), 40343);
+    }
+
+    inline uint64_t HashBytesMur2(const char *str) {
+        return MurmurHash64B(str, std::strlen(str), 40343);
+    }
+
+    inline uint64_t HashBytesMur3(const char *str) {
+        uint64_t seed = 40343;
+        uint64_t hash_otpt[2] = {0};
+        MurmurHash3_x64_128(str, std::strlen(str), seed, hash_otpt);
+        return *hash_otpt;
+    }
+
+    inline uint64_t HashBytesCityHash(const char *str) {
+        return CityHash64WithSeed(str, std::strlen(str), 40343);
+    }
+
 public:
     uint64_t hash(T t) {
         /*string li = typeid(T).name();
@@ -62,9 +124,33 @@ public:
         bool eq = (typeid(T) == typeid(uint64_t));
 
         if (typeid(T) == typeid(const char *) || typeid(T) == typeid(char *)) {
+#if (HASHFUNC == MHASHER)
             return HashBytes((const char *) t);
+#elif (HASHFUNC == MURMURHASH1)
+            return HashBytesMur1((const char *) t);
+#elif (HASHFUNC == MURMURHASH2)
+            return HashBytesMur2((const char *) t);
+#elif (HASHFUNC == MURMURHASH3)
+            return HashBytesMur3((const char *) t);
+#elif (HASHFUNC == CITYHASH)
+            return HashBytesCityHash((const char *) t);
+#else
+            return HashBytes((const char *) t);
+#endif
         } else if (typeid(T) == typeid(uint64_t)) {
+#if (HASHFUNC == MHASHER)
             return GetHashCode((uint64_t) t);
+#elif (HASHFUNC == MURMURHASH1)
+            return GetHashCodeMur1((uint64_t) t);
+#elif (HASHFUNC == MURMURHASH2)
+            return GetHashCodeMur2((uint64_t) t);
+#elif (HASHFUNC == MURMURHASH3)
+            return GetHashCodeMur3((uint64_t) t);
+#elif (HASHFUNC == CITYHASH)
+            return GetHashCodeCityHash((uint64_t) t);
+#else
+            return GetHashCode((uint64_t) t);
+#endif
         }
         return static_cast<size_t >(-1);
     }

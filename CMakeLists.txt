@@ -129,6 +129,24 @@ endif ()
 
 option(WITH_UTILS "build with utils" ON)
 if (WITH_UTILS)
+    if (HASHFUNC)
+        if (${HASHFUNC} EQUAL 0)
+            add_definitions(-DHASHFUNC=0)
+        elseif (${HASHFUNC} EQUAL 1)
+            add_definitions(-DHASHFUNC=1)
+        elseif (${HASHFUNC} EQUAL 2)
+            add_definitions(-DHASHFUNC=2)
+        elseif (${HASHFUNC} EQUAL 3)
+            add_definitions(-DHASHFUNC=3)
+        elseif (${HASHFUNC} EQUAL 4)
+            add_definitions(-DHASHFUNC=4)
+        endif ()
+    endif ()
+    set(HASHLIBS
+            src/mhash/util/City.cpp
+            src/mhash/util/MurmurHash1.cpp
+            src/mhash/util/MurmurHash2.cpp
+            src/mhash/util/MurmurHash3.cpp)
     set(UTILS
             utils/DistributionTool.cpp
             utils/MicroDistTool.cpp
@@ -205,7 +223,7 @@ endforeach (sourcefile ${MF_TESTS_EXES})
 set(UTILS_EXES ${UTILS})
 foreach (sourcefile ${UTILS_EXES})
     get_filename_component(exename ${sourcefile} NAME_WE)
-    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile} ${HASHLIBS})
     set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
             PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
             EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
