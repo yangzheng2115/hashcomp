@@ -75,7 +75,7 @@ void multiHasherTests() {
     }
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
-        cout << "\t\tThread " << runtime[t] << " with " << total << endl;
+        cout << "\t\tThread " << t << " runtime " << runtime[t] << " with " << total << endl;
     }
     cout << "Multi-thread gen: " << tracer.getRunTime() << " with " << (total * pdegree) << endl;
 }
