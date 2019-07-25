@@ -5,6 +5,7 @@
 #ifndef HASHCOMP_HASHER_H
 #define HASHCOMP_HASHER_H
 
+#include <functional>
 #include "City.h"
 #include "MurmurHash1.h"
 #include "MurmurHash2.h"
@@ -135,7 +136,8 @@ public:
 #elif (HASHFUNC == CITYHASH)
             return HashBytesCityHash((const char *) t);
 #else
-            return HashBytes((const char *) t);
+            std::hash<const char *> chasher;
+            return chasher((const char *) t);
 #endif
         } else if (typeid(T) == typeid(uint64_t)) {
 #if (HASHFUNC == MHASHER)
@@ -149,7 +151,8 @@ public:
 #elif (HASHFUNC == CITYHASH)
             return GetHashCodeCityHash((uint64_t) t);
 #else
-            return GetHashCode((uint64_t) t);
+            std::hash<uint64_t> ihasher;
+            return ihasher((uint64_t) t);
 #endif
         }
         return static_cast<size_t >(-1);

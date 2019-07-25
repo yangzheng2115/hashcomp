@@ -140,6 +140,8 @@ if (WITH_UTILS)
             add_definitions(-DHASHFUNC=3)
         elseif (${HASHFUNC} EQUAL 4)
             add_definitions(-DHASHFUNC=4)
+        else ()
+            add_definitions(-DHASHFUNC=5)
         endif ()
     endif ()
     set(HASHLIBS
