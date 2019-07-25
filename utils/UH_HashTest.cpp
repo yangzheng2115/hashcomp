@@ -38,9 +38,8 @@ void mhasherTests(bool init = true, int tid = 0) {
             umap.insert(gk);
         }
     }
-    runtime[tid] = tracer.getRunTime();
-    //cout << "\tSet gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
     if (init) {
+        cout << "\tSet gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
         for (size_t i = 0; i < total; i++) {
             char *key = sinput[i];
             uint64_t gk = hasher.hash(key);
@@ -63,6 +62,8 @@ void mhasherTests(bool init = true, int tid = 0) {
             }
         }
         cout << "\tHst gen: " << tracer.getRunTime() << " with " << umap.size() << endl;
+    } else {
+        runtime[tid] = tracer.getRunTime();
     }
 }
 

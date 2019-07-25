@@ -86,6 +86,7 @@ public:
     static inline int getTID(void) {
         int tid = tl_tcico.tid;
         if (tid != ThreadCheckInCheckOut::NOT_ASSIGNED) return tid;
+        //std::cout << "Thread " << gThreadRegistry.getMaxThreads() + 1 << " registered" << endl;
         return gThreadRegistry.register_thread_new();
     }
 };
@@ -140,6 +141,10 @@ public:
         std::size_t hash() const { return hash_; }
     };
 
+    data_node *reserviors[REGISTRY_MAX_THREADS];
+
+    size_t thread_reservior_cursor[REGISTRY_MAX_THREADS];
+
 private:
     class array_node : node {
         std::array<ACCESSOR<node>, ARRAY_SIZE> arr_;
@@ -148,10 +153,6 @@ private:
 
         constexpr static std::size_t size() { return ARRAY_SIZE; }
     };
-
-    //static data_node *reserviors[REGISTRY_MAX_THREADS];
-
-    //static size_t thread_reservior_cursor[REGISTRY_MAX_THREADS];
 
     class reserved_pool {
         STACK<ACCESSOR<data_node>> data_st_;
@@ -248,12 +249,13 @@ private:
                         while (atomic_pos->compare_exchange_strong(loc_ref, nullptr));
                     } else {
 #if COARSE_RESERVIOR
-                        /* if (thread_reservior_cursor[tid] == ARRAY_SIZE) {
-                             reserviors[tid] = new data_node[ARRAY_SIZE];
-                         }
-                         tmp_ptr.reset(
-                                 static_cast<data_node *>(new(reserviors[tid][thread_reservior_cursor[tid]])data_node(
-                                         key, *mappedp, hash)));*/
+                        if (ht.thread_reservior_cursor[tid] == ARRAY_SIZE) {
+                            ht.reserviors[tid] = new data_node[ARRAY_SIZE];
+                        }
+                        tmp_ptr.reset(
+                                static_cast<data_node *>(new(
+                                        ht.reserviors[tid][ht.thread_reservior_cursor[tid]])data_node(key, *mappedp,
+                                                                                                      hash)));
 #else
                         tmp_ptr.reset(static_cast<node *>(new data_node(key, *mappedp, hash)));
 #endif
@@ -286,10 +288,10 @@ public:
             level++;
         }
         max_level_ = level;
-        /*for (int i = 0; i < REGISTRY_MAX_THREADS; i++) {
+        for (int i = 0; i < REGISTRY_MAX_THREADS; i++) {
             reserviors[i] = static_cast<data_node *>(malloc(sizeof(data_node) * ARRAY_SIZE));
             thread_reservior_cursor[i] = ARRAY_SIZE;
-        }*/
+        }
     }
 
     std::pair<const Key, const T> Get(const Key &key) {
