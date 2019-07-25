@@ -152,7 +152,8 @@ if (WITH_UTILS)
     set(UTILS
             utils/DistributionTool.cpp
             utils/MicroDistTool.cpp
-            utils/UH_UnitTest.cpp)
+            utils/UH_UnitTest.cpp
+            utils/UH_HashTest.cpp)
 endif ()
 
 find_package(Threads)
