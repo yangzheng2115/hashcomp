@@ -17,7 +17,6 @@
 #include "util.h"
 #include <boost/smart_ptr/atomic_shared_ptr.hpp>
 #include <boost/lockfree/stack.hpp>
-#include <c++/5/utility>
 
 #define COARSE_RESERVIOR 1
 
