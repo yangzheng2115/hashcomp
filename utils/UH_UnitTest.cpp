@@ -294,6 +294,7 @@ void newWorker(bool inBatch, int tid) {
             loads[i] = new(cache + cursor)datanode(i, i);
             if (i == (pdegree - 1) && (pdegree - 1) == tid)
                 cout << loads[i]->get().first << " " << loads[i]->hash() << " " << hasher(i) << endl;
+            cursor++;
         }
         for (int i = 0; i < total; i++) {
             // Not very sure whether loads[i] can be deleted here.
