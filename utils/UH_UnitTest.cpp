@@ -253,14 +253,18 @@ void stdWorker(std::stack<int> *s) {
     }
 }
 
-void bstWorker(boost::lockfree::stack<int> *s) {
+void bstWorker(boost::lockfree::stack<int> *s, long *newtime, long *freetime) {
+    Tracer tracer;
+    tracer.startTime();
     for (int i = 0; i < total / pdegree; i++) {
         s->push(i);
     }
+    *newtime = tracer.getRunTime();
     for (int i = 0; i < total / pdegree; i++) {
         int v = -1;
         s->pop(v);
     }
+    *freetime = tracer.getRunTime();
 }
 
 void boostStackVSstdStack(bool usingStd) {
@@ -269,26 +273,33 @@ void boostStackVSstdStack(bool usingStd) {
         std::stack<int> stdStack;
         stdWorker(&stdStack);
     } else {
+        long newtime[pdegree];
+        long freetime[pdegree];
         boost::lockfree::stack<int> bstStack(128);
         for (int t = 0; t < pdegree; t++) {
-            workers.push_back(std::thread(bstWorker, &bstStack));
+            workers.push_back(std::thread(bstWorker, &bstStack, newtime + t, freetime + t));
         }
         for (int t = 0; t < pdegree; t++) {
             workers[t].join();
+            cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << endl;
         }
     }
 }
 
-void newWorker(bool inBatch, int tid) {
+void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
     typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
     datanode **loads = new datanode *[total];
+    Tracer tracer;
+    tracer.startTime();
     if (inBatch) {
         datanode *cache;
         size_t cursor = CACHE_RESERVE;
         std::hash<uint64_t> hasher;
+        std::stack<datanode *> allocated;
         for (int i = 0; i < total; i++) {
             if (cursor == CACHE_RESERVE) {
-                cache = static_cast<datanode *>(malloc(sizeof(datanode) * CACHE_RESERVE));
+                cache = (datanode *) malloc(sizeof(datanode) * CACHE_RESERVE);
+                allocated.push(cache);
                 cursor = 0;
             }
             loads[i] = new(cache + cursor)datanode(i, i);
@@ -296,20 +307,26 @@ void newWorker(bool inBatch, int tid) {
                 cout << loads[i]->get().first << " " << loads[i]->hash() << " " << hasher(i) << endl;
             cursor++;
         }
+        *newtime = tracer.getRunTime();
         for (int i = 0; i < total; i++) {
-            // Not very sure whether loads[i] can be deleted here.
+            // De-constructor can not really delete each object here.
             loads[i]->~datanode();
         }
-        for (int i = cursor; i < CACHE_RESERVE; i++) {
-            cache[i].~datanode();
+        while (!allocated.empty()) {
+            datanode *element = allocated.top();
+            allocated.pop();
+            free(element);
         }
+        *freetime = tracer.getRunTime();
     } else {
         for (int i = 0; i < total; i++) {
             loads[i] = new datanode(i, i, sizeof(uint64_t));
         }
+        *newtime = tracer.getRunTime();
         for (int i = 0; i < total; i++) {
             delete loads[i];
         }
+        *freetime = tracer.getRunTime();
     }
     delete[] loads;
 }
@@ -318,11 +335,14 @@ void concurrentDataAllocate(bool inBatch) {
     cout << "Allocator per " << sizeof(UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node)
          << endl;
     std::vector<std::thread> workers;
+    long newtime[pdegree];
+    long freetime[pdegree];
     for (int t = 0; t < pdegree; t++) {
-        workers.push_back(std::thread(newWorker, inBatch, t));
+        workers.push_back(std::thread(newWorker, inBatch, t, newtime + t, freetime + t));
     }
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
+        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << endl;
     }
 }
 
@@ -377,6 +397,7 @@ void insert() {
 
     for (int i = 0; i < pdegree; i++) {
         pthread_join(threads[i], nullptr);
+        cout << "\t" << i << " " << params[i].runtime << endl;
         total_runtime += params[i].runtime;
         if (params[i].runtime > max_runtime) {
             max_runtime = params[i].runtime;
