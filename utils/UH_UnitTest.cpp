@@ -314,6 +314,8 @@ void newWorker(bool inBatch, int tid) {
 }
 
 void concurrentDataAllocate(bool inBatch) {
+    cout << "Allocator per " << sizeof(UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node)
+         << endl;
     std::vector<std::thread> workers;
     for (int t = 0; t < pdegree; t++) {
         workers.push_back(std::thread(newWorker, inBatch, t));
