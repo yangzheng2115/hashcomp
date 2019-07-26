@@ -139,9 +139,9 @@ public:
         ~data_node() {}
 
         void reset(const Key &key, const T &mapped) {
+            // In case of jemalloc, the following variables will be allocated on demand, which means we cannot save time
+            // with inner variables being allocated in batch while initialized separately.
             this->type_ = node_type::DATA_NODE;
-            //data_.first = key;
-            //data_.second = mapped;
             data_ = std::pair<Key, T>(key, mapped);
             hash_ = Hash()(key);
         }
