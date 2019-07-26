@@ -17,6 +17,7 @@
 #include "util.h"
 #include <boost/smart_ptr/atomic_shared_ptr.hpp>
 #include <boost/lockfree/stack.hpp>
+#include <c++/5/utility>
 
 #define COARSE_RESERVIOR 1
 
@@ -118,6 +119,7 @@ private:
 
 private:
     class node {
+    protected:
         node_type type_;
     public:
         explicit node(node_type type) : type_(type) {}
@@ -125,8 +127,8 @@ private:
 
 public:
     class data_node : node {
-        const std::pair<const Key, const T> data_;
-        const std::size_t hash_;
+        std::pair<Key, T> data_;
+        std::size_t hash_;
     public:
         data_node(const Key &key, const T &mapped) : node(node_type::DATA_NODE), data_(key, mapped),
                                                      hash_(Hash()(key)) {}
@@ -136,7 +138,16 @@ public:
 
         ~data_node() {}
 
-        const std::pair<const Key, const T> &get() { return data_; }
+        void reset(const Key &key, const T &mapped) {
+            this->type_ = node_type::DATA_NODE;
+            //data_.first = key;
+            //data_.second = mapped;
+            data_ = std::pair<Key, T>(key, mapped);
+            hash_ = Hash()(key);
+        }
+
+        //const std::pair<const Key, const T> &get() { return data_; }
+        const std::pair<Key, T> &get() { return data_; }
 
         std::size_t hash() const { return hash_; }
     };

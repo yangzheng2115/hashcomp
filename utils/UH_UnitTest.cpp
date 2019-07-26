@@ -32,6 +32,7 @@ using namespace neatlib;
 
 #define VARIANT_FIELD 1
 #define CACHE_RESERVE (1 << 8)
+#define INPLACE_NEW   0
 
 uint64_t total = 10000000;
 int pdegree = 4;
@@ -302,16 +303,26 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
                 allocated.push(cache);
                 cursor = 0;
             }
+#if INPLACE_NEW
             loads[i] = new(cache + cursor)datanode(i, i);
+#else
+            loads[i] = &cache[cursor];
+            loads[i]->reset(i, i);
+            uint64_t hashv = loads[i]->hash();
+            uint64_t key = loads[i]->get().first;
+            uint64_t value = loads[i]->get().second;
+#endif
             if (i == (pdegree - 1) && (pdegree - 1) == tid)
                 cout << loads[i]->get().first << " " << loads[i]->hash() << " " << hasher(i) << endl;
             cursor++;
         }
         *newtime = tracer.getRunTime();
+#if INPLACE_NEW
         for (int i = 0; i < total; i++) {
             // De-constructor can not really delete each object here.
             loads[i]->~datanode();
         }
+#endif
         while (!allocated.empty()) {
             datanode *element = allocated.top();
             allocated.pop();
