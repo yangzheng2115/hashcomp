@@ -116,7 +116,8 @@ option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
             tests/FH_MicroTest.cpp
-            tests/FH_YCSB.cpp)
+            tests/FH_YCSB.cpp
+            utils/EP_UnitTest.cpp)
 endif ()
 
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
