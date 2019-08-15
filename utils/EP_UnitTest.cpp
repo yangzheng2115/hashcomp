@@ -31,10 +31,13 @@ using namespace FASTER::memory;
 #define CACHE_RESERVE (1 << 8)
 #define INPLACE_NEW   0
 
-uint64_t total = 10000000;
+uint64_t total = 100000000;
 int pdegree = 4;
 int simple = 0;
-long total_runtime = 0;
+int oneshot = 1;
+atomic<long> total_tick(0);
+long total_newtime = 0;
+long total_freetime = 0;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 atomic<int> stopMeasure(0);
@@ -66,12 +69,15 @@ void simpleEpoch() {
     cout << "Address: " << mynode6.kPageBits << " " << mynode6.offset() << endl;
 }
 
-void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
+void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick) {
     typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
     datanode **loads = new datanode *[total];
     Tracer tracer;
+    bool run = false;
     tracer.startTime();
-    while (stopMeasure.load(memory_order_relaxed) == 0) {
+
+    while (stopMeasure.load(memory_order_relaxed) == 0 || !run) {
+        run = true;
         if (inBatch) {
             datanode *cache;
             size_t cursor = CACHE_RESERVE;
@@ -93,6 +99,7 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
                 uint64_t value = loads[i]->get().second;
 #endif
                 cursor++;
+                (*tick)++;
             }
             *newtime += tracer.getRunTime();
 #if INPLACE_NEW
@@ -110,6 +117,7 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
         } else {
             for (int i = 0; i < total; i++) {
                 loads[i] = new datanode(i, i, sizeof(uint64_t));
+                (*tick)++;
             }
             *newtime = tracer.getRunTime();
             for (int i = 0; i < total; i++) {
@@ -118,6 +126,7 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
             *freetime += tracer.getRunTime();
         }
     }
+    total_tick.fetch_add(*tick, memory_order_release);
     delete[] loads;
 }
 
@@ -125,39 +134,52 @@ void concurrentDataAllocate(bool inBatch) {
     cout << "Allocator per " << sizeof(UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node)
          << endl;
     std::vector<std::thread> workers;
-
-    stopMeasure.store(0, memory_order_relaxed);
     long newtime[pdegree];
     long freetime[pdegree];
+    long tick[pdegree];
+    total_newtime = 0;
+    total_freetime = 0;
+    total_tick.store(0, memory_order_release);
+
+    stopMeasure.store(0, memory_order_relaxed);
     Timer timer;
     timer.start();
     for (int t = 0; t < pdegree; t++) {
         newtime[t] = 0;
         freetime[t] = 0;
-        workers.push_back(std::thread(newWorker, inBatch, t, newtime + t, freetime + t));
+        tick[t] = 0;
+        workers.push_back(std::thread(newWorker, inBatch, t, newtime + t, freetime + t, tick + t));
     }
-    while (timer.elapsedSeconds() < default_timer_range) {
-        sleep(1);
+    if (!oneshot) {
+        while (timer.elapsedSeconds() < default_timer_range) {
+            sleep(1);
+        }
     }
     stopMeasure.store(1, memory_order_relaxed);
 
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
-        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << endl;
+        total_newtime += newtime[t];
+        total_freetime += freetime[t];
+        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << endl;
     }
 }
 
 typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
 typedef MallocFixedPageSize<Item, FASTER::io::NullDisk> alloc_t;
 
-void eopchWorker(bool inBatch, alloc_t *allocator, int tid, long *newtime, long *freetime) {
+void eopchWorker(bool inBatch, alloc_t *allocator, int tid, long *newtime, long *freetime, long *tick) {
     FixedPageAddress *loads = new FixedPageAddress[total];
     Tracer tracer;
+    bool run = false;
     tracer.startTime();
-    while (stopMeasure.load(memory_order_relaxed) == 0) {
+
+    while (stopMeasure.load(memory_order_relaxed) == 0 || !run) {
+        run = true;
         for (int i = 0; i < total; i++) {
             //loads[i] = new datanode(i, i, sizeof(uint64_t));
             loads[i] = allocator->Allocate();
+            (*tick)++;
         }
         *newtime += tracer.getRunTime();
         for (int i = 0; i < total; i++) {
@@ -165,6 +187,7 @@ void eopchWorker(bool inBatch, alloc_t *allocator, int tid, long *newtime, long 
         }
         *freetime += tracer.getRunTime();
     }
+    total_tick.fetch_add(*tick, memory_order_release);
     delete[] loads;
 }
 
@@ -175,35 +198,45 @@ void concurrentEopchAllocate(bool inBatch) {
     LightEpoch epoch;
     alloc_t allocator;
     allocator.Initialize(sizeof(datanode), epoch);
-
-    stopMeasure.store(0, memory_order_relaxed);
+    total_newtime = 0;
+    total_freetime = 0;
     long newtime[pdegree];
     long freetime[pdegree];
+    long tick[pdegree];
+    total_tick.store(0, memory_order_release);
+
+    stopMeasure.store(0, memory_order_relaxed);
     Timer timer;
     timer.start();
     for (int t = 0; t < pdegree; t++) {
         newtime[t] = 0;
         freetime[t] = 0;
-        workers.push_back(std::thread(eopchWorker, inBatch, &allocator, t, newtime + t, freetime + t));
+        tick[t] = 0;
+        workers.push_back(std::thread(eopchWorker, inBatch, &allocator, t, newtime + t, freetime + t, tick + t));
     }
-    while (timer.elapsedSeconds() < default_timer_range) {
-        sleep(1);
+    if (!oneshot) {
+        while (timer.elapsedSeconds() < default_timer_range) {
+            sleep(1);
+        }
     }
     stopMeasure.store(1, memory_order_relaxed);
 
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
-        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << endl;
+        total_newtime += newtime[t];
+        total_freetime += freetime[t];
+        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << endl;
     }
 }
 
 int main(int argc, char **argv) {
-    if (argc > 3) {
+    if (argc > 4) {
         total = std::atol(argv[1]);
         pdegree = std::atoi(argv[2]);
         simple = std::atoi(argv[3]);
+        oneshot = std::atoi(argv[4]);
     }
-    cout << total << " " << pdegree << " " << simple << endl;
+    cout << total << " " << pdegree << " " << simple << " " << oneshot << endl;
     Tracer tracer;
     if (simple) {
         tracer.startTime();
@@ -212,13 +245,16 @@ int main(int argc, char **argv) {
     } else {
         tracer.startTime();
         concurrentDataAllocate(false);
-        cout << "new: " << tracer.getRunTime() << endl;
+        cout << "new: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
         tracer.startTime();
         concurrentDataAllocate(true);
-        cout << "bew: " << tracer.getRunTime() << endl;
+        cout << "bew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
         tracer.startTime();
         concurrentEopchAllocate(true);
-        cout << "eew: " << tracer.getRunTime() << endl;
+        cout << "eew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
         tracer.startTime();
         simpleEpoch();
         cout << "Ist: " << tracer.getRunTime() << endl;
