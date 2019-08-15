@@ -43,11 +43,26 @@ struct alignas(32) Item {
 };
 
 void simpleEpoch() {
-    //typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
+    typedef UniversalHashTable<uint64_t, uint64_t, std::hash<uint64_t>, 4, 16>::data_node datanode;
     typedef MallocFixedPageSize<Item, FASTER::io::NullDisk> alloc_t;
     LightEpoch epoch;
     alloc_t allocator;
-    allocator.Initialize(256, epoch);
+    cout << "Epoch page size: " << sizeof(datanode) << endl;
+    allocator.Initialize(sizeof(datanode), epoch);
+    FixedPageAddress mynode1 = allocator.Allocate();
+    cout << "Address: " << mynode1.kPageBits << " " << mynode1.offset() << endl;
+    FixedPageAddress mynode2 = allocator.Allocate();
+    cout << "Address: " << mynode2.kPageBits << " " << mynode2.offset() << endl;
+    FixedPageAddress mynode3 = allocator.Allocate();
+    cout << "Address: " << mynode3.kPageBits << " " << mynode3.offset() << endl;
+    FixedPageAddress mynode4 = allocator.Allocate();
+    cout << "Address: " << mynode4.kPageBits << " " << mynode4.offset() << endl;
+    allocator.FreeAtEpoch(mynode1, 0);
+    allocator.FreeAtEpoch(mynode2, 1);
+    FixedPageAddress mynode5 = allocator.Allocate();
+    cout << "Address: " << mynode5.kPageBits << " " << mynode5.offset() << endl;
+    FixedPageAddress mynode6 = allocator.Allocate();
+    cout << "Address: " << mynode6.kPageBits << " " << mynode6.offset() << endl;
 }
 
 void newWorker(bool inBatch, int tid, long *newtime, long *freetime) {
