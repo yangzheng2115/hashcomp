@@ -30,6 +30,7 @@ using namespace FASTER::memory;
 #define VARIANT_FIELD 1
 #define CACHE_RESERVE (1 << 8)
 #define INPLACE_NEW   0
+#define ROUND 6
 
 uint64_t total = 100000000;
 int pdegree = 4;
@@ -243,21 +244,24 @@ int main(int argc, char **argv) {
         simpleEpoch();
         cout << "Ist: " << tracer.getRunTime() << endl;
     } else {
-        tracer.startTime();
-        concurrentDataAllocate(false);
-        cout << "new: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
-             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
-        tracer.startTime();
-        concurrentDataAllocate(true);
-        cout << "bew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
-             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
-        tracer.startTime();
-        concurrentEopchAllocate(true);
-        cout << "eew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
-             << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
-        tracer.startTime();
-        simpleEpoch();
-        cout << "Ist: " << tracer.getRunTime() << endl;
+        for (int i = 0; i <= ROUND; i++) {
+            cout << "Round: " << i << endl;
+            tracer.startTime();
+            concurrentDataAllocate(false);
+            cout << "new: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+                 << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
+            tracer.startTime();
+            concurrentDataAllocate(true);
+            cout << "bew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+                 << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
+            tracer.startTime();
+            concurrentEopchAllocate(true);
+            cout << "eew: " << tracer.getRunTime() << " " << total_tick.load(memory_order_release) << " tpt: "
+                 << (double) total_tick.load(memory_order_relaxed) * pdegree / (total_newtime + total_freetime) << endl;
+            tracer.startTime();
+            simpleEpoch();
+            cout << "Ist: " << tracer.getRunTime() << endl;
+        }
     }
     return 0;
 }
