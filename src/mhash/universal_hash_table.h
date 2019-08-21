@@ -145,6 +145,10 @@ public:
             hash_ = Hash()(key);
         }
 
+        void set(const T &mapped) {
+            data_.second = mapped;
+        }
+
         //const std::pair<const Key, const T> &get() { return data_; }
         const std::pair<Key, T> &get() { return data_; }
 

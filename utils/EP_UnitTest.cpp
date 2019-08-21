@@ -34,6 +34,7 @@ using namespace FASTER::memory;
 
 uint64_t total = 100000000;
 int pdegree = 4;
+int touched = 0;
 int simple = 0;
 int oneshot = 1;
 atomic<long> total_tick(0);
@@ -98,6 +99,9 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
                 uint64_t hashv = loads[i]->hash();
                 uint64_t key = loads[i]->get().first;
                 uint64_t value = loads[i]->get().second;
+                if (touched) {
+                    loads[i]->set(i);
+                }
 #endif
                 cursor++;
                 (*tick)++;
@@ -118,6 +122,9 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
         } else {
             for (int i = 0; i < total; i++) {
                 loads[i] = new datanode(i, i, sizeof(uint64_t));
+                if (touched) {
+                    loads[i]->set(i);
+                }
                 (*tick)++;
             }
             *newtime = tracer.getRunTime();
@@ -231,13 +238,14 @@ void concurrentEopchAllocate(bool inBatch) {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 4) {
+    if (argc > 5) {
         total = std::atol(argv[1]);
         pdegree = std::atoi(argv[2]);
         simple = std::atoi(argv[3]);
         oneshot = std::atoi(argv[4]);
+        touched = std::atoi(argv[5]);
     }
-    cout << total << " " << pdegree << " " << simple << " " << oneshot << endl;
+    cout << total << " " << pdegree << " " << simple << " " << oneshot << " " << touched << endl;
     Tracer tracer;
     if (simple) {
         tracer.startTime();
