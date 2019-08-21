@@ -97,9 +97,9 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
 #else
                 loads[i] = &cache[cursor];
                 loads[i]->reset(i, i);
-                uint64_t hashv = loads[i]->hash();
+                /*uint64_t hashv = loads[i]->hash();
                 uint64_t key = loads[i]->get().first;
-                uint64_t value = loads[i]->get().second;
+                uint64_t value = loads[i]->get().second;*/
                 if (touched) {
                     loads[i]->set(i);
                 }
@@ -117,10 +117,12 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
             while (!allocated.empty()) {
                 datanode *element = allocated.top();
                 if (touched) {
-                    if (element->get().first == 0) {
-                        tarray[tid]++;
-                    } else {
-                        tarray[tid] += element->get().second / element->get().first;
+                    for (int i = 0; i < CACHE_RESERVE; i++) {
+                        if (element[i].get().first == 0) {
+                            tarray[tid]++;
+                        } else {
+                            tarray[tid] += element[i].get().second / element[i].get().first;
+                        }
                     }
                 }
                 allocated.pop();
@@ -162,7 +164,7 @@ void concurrentDataAllocate(bool inBatch) {
     long tick[pdegree];
     total_newtime = 0;
     total_freetime = 0;
-    if (touched) std::memset(tarray, 0, pdegree);
+    if (touched) std::memset(tarray, 0, pdegree * sizeof(long));
     total_tick.store(0, memory_order_release);
 
     stopMeasure.store(0, memory_order_relaxed);
@@ -224,7 +226,7 @@ void concurrentEopchAllocate(bool inBatch) {
     allocator.Initialize(sizeof(datanode), epoch);
     total_newtime = 0;
     total_freetime = 0;
-    if (touched) std::memset(tarray, 0, pdegree);
+    if (touched) std::memset(tarray, 0, pdegree * sizeof(long));
     long newtime[pdegree];
     long freetime[pdegree];
     long tick[pdegree];
