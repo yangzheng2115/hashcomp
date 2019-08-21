@@ -185,7 +185,8 @@ void concurrentDataAllocate(bool inBatch) {
         workers[t].join();
         total_newtime += newtime[t];
         total_freetime += freetime[t];
-        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << " " << tarray[t] << endl;
+        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << " "
+             << (touched ? tarray[t] : tick[t]) << endl;
     }
 }
 
