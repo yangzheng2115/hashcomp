@@ -40,6 +40,7 @@ int oneshot = 1;
 atomic<long> total_tick(0);
 long total_newtime = 0;
 long total_freetime = 0;
+long *tarray;
 long max_runtime = 0;
 long min_runtime = std::numeric_limits<long>::max();
 atomic<int> stopMeasure(0);
@@ -115,6 +116,13 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
 #endif
             while (!allocated.empty()) {
                 datanode *element = allocated.top();
+                if (touched) {
+                    if (element->get().first == 0) {
+                        tarray[tid]++;
+                    } else {
+                        tarray[tid] += element->get().second / element->get().first;
+                    }
+                }
                 allocated.pop();
                 free(element);
             }
@@ -129,6 +137,13 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
             }
             *newtime = tracer.getRunTime();
             for (int i = 0; i < total; i++) {
+                if (touched) {
+                    if (loads[i]->get().first == 0) {
+                        tarray[tid]++;
+                    } else {
+                        tarray[tid] += loads[i]->get().second / loads[i]->get().first;
+                    }
+                }
                 delete loads[i];
             }
             *freetime += tracer.getRunTime();
@@ -147,6 +162,7 @@ void concurrentDataAllocate(bool inBatch) {
     long tick[pdegree];
     total_newtime = 0;
     total_freetime = 0;
+    if (touched) std::memset(tarray, 0, pdegree);
     total_tick.store(0, memory_order_release);
 
     stopMeasure.store(0, memory_order_relaxed);
@@ -169,7 +185,7 @@ void concurrentDataAllocate(bool inBatch) {
         workers[t].join();
         total_newtime += newtime[t];
         total_freetime += freetime[t];
-        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << endl;
+        cout << "\t" << t << " " << newtime[t] << " " << freetime[t] << " " << tick[t] << " " << tarray[t] << endl;
     }
 }
 
@@ -200,14 +216,14 @@ void eopchWorker(bool inBatch, alloc_t *allocator, int tid, long *newtime, long 
 }
 
 void concurrentEopchAllocate(bool inBatch) {
-    cout << "Allocator per " << sizeof(datanode)
-         << endl;
+    cout << "Allocator per " << sizeof(datanode) << endl;
     std::vector<std::thread> workers;
     LightEpoch epoch;
     alloc_t allocator;
     allocator.Initialize(sizeof(datanode), epoch);
     total_newtime = 0;
     total_freetime = 0;
+    if (touched) std::memset(tarray, 0, pdegree);
     long newtime[pdegree];
     long freetime[pdegree];
     long tick[pdegree];
@@ -253,6 +269,7 @@ int main(int argc, char **argv) {
         cout << "Ist: " << tracer.getRunTime() << endl;
     } else {
         for (int i = 0; i <= ROUND; i++) {
+            if (touched) tarray = new long[pdegree];
             cout << "Round: " << i << endl;
             tracer.startTime();
             concurrentDataAllocate(false);
@@ -269,6 +286,7 @@ int main(int argc, char **argv) {
             tracer.startTime();
             simpleEpoch();
             cout << "Ist: " << tracer.getRunTime() << endl;
+            if (touched) delete[] tarray;
         }
     }
     return 0;
