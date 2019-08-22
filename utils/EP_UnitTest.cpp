@@ -117,11 +117,21 @@ void newWorker(bool inBatch, int tid, long *newtime, long *freetime, long *tick)
             while (!allocated.empty()) {
                 datanode *element = allocated.top();
                 if (touched) {
-                    for (int i = 0; i < CACHE_RESERVE; i++) {
-                        if (element[i].get().first == 0) {
-                            tarray[tid]++;
-                        } else {
-                            tarray[tid] += element[i].get().second / element[i].get().first;
+                    if (allocated.size() == 1) {
+                        for (int i = 0; i < cursor; i++) {
+                            if (element[i].get().first == 0) {
+                                tarray[tid]++;
+                            } else {
+                                tarray[tid] += element[i].get().second / element[i].get().first;
+                            }
+                        }
+                    } else {
+                        for (int i = 0; i < CACHE_RESERVE; i++) {
+                            if (element[i].get().first == 0) {
+                                tarray[tid]++;
+                            } else {
+                                tarray[tid] += element[i].get().second / element[i].get().first;
+                            }
                         }
                     }
                 }
