@@ -171,7 +171,7 @@ void multiWorkers() {
     }
     cout << "Gathering ..." << endl;
     cout << "\tRound 0: " << store.Size() << " " << endl;
-    for (int i = init_size; i <= total_count * 2; i * 2) {
+    for (int i = init_size, d = 1; i <= total_count * 2; i *= 2, d++) {
         tracer.startTime();
         store.StartSession();
         static std::atomic<bool> grow_done{false};
@@ -184,7 +184,7 @@ void multiWorkers() {
             std::this_thread::yield();
         }
         store.StopSession();
-        cout << "\tRound " << i << ": " << store.Size() << " " << tracer.getRunTime() << endl;
+        cout << "\tRound " << d << ": " << store.Size() << " " << tracer.getRunTime() << endl;
     }
 }
 
