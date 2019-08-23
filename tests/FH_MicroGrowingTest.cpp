@@ -148,15 +148,21 @@ void multiWorkers() {
     output = new stringstream[thread_number];
     Tracer tracer;
     tracer.startTime();
+    store.StartSession();
+    cout << "\tTill SessionStart " << tracer.fetchTime() << endl;
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
     }
     for (int i = 0; i < thread_number; i++) {
         pthread_join(workers[i], nullptr);
     }
+    store.StopSession();
+    cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
     cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
     Timer timer;
     timer.start();
+    store.StartSession();
+    cout << "\tTill SessionStart " << tracer.fetchTime() << endl;
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
@@ -169,11 +175,14 @@ void multiWorkers() {
         string outstr = output[i].str();
         cout << outstr;
     }
+    store.StopSession();
+    cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
     cout << "Gathering ..." << endl;
-    cout << "\tRound 0: " << store.Size() << " " << endl;
+    cout << "\tRound 0: " << store.Size() << " " << tracer.getRunTime() << endl;
     for (int i = init_size, d = 1; i <= total_count * 2; i *= 2, d++) {
         tracer.startTime();
         store.StartSession();
+        cout << "\t\tTill SessionStart " << tracer.fetchTime() << endl;
         static std::atomic<bool> grow_done{false};
         auto callback = [](uint64_t new_size) {
             grow_done = true;
@@ -183,6 +192,7 @@ void multiWorkers() {
             store.Refresh();
             std::this_thread::yield();
         }
+        cout << "\t\tTill SessionStop " << tracer.fetchTime() << endl;
         store.StopSession();
         cout << "\tRound " << d << ": " << store.Size() << " " << tracer.getRunTime() << endl;
     }
