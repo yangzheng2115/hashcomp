@@ -65,6 +65,7 @@ struct target *parms;
 void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
+    store.StartSession();
     for (int i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
@@ -74,6 +75,7 @@ void *insertWorker(void *args) {
         inserted++;
     }
     __sync_fetch_and_add(&exists, inserted);
+    store.StopSession();
 }
 
 void *measureWorker(void *args) {
@@ -82,6 +84,7 @@ void *measureWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
+    store.StartSession();
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
@@ -115,6 +118,7 @@ void *measureWorker(void *args) {
     __sync_fetch_and_add(&total_time, elipsed);
     __sync_fetch_and_add(&success, hit);
     __sync_fetch_and_add(&failure, fail);
+    store.StopSession();
 }
 
 void prepare() {
