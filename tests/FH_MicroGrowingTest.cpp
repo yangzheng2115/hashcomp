@@ -62,6 +62,33 @@ pthread_t *workers;
 
 struct target *parms;
 
+
+void prepare() {
+    cout << "prepare" << endl;
+    workers = new pthread_t[thread_number];
+    parms = new struct target[thread_number];
+    output = new stringstream[thread_number];
+    for (int i = 0; i < thread_number; i++) {
+        parms[i].tid = i;
+        parms[i].store = &store;
+        parms[i].insert = (uint64_t *) calloc(total_count / thread_number, sizeof(uint64_t *));
+        char buf[DEFAULT_STR_LENGTH];
+        for (int j = 0; j < total_count / thread_number; j++) {
+            std::sprintf(buf, "%d", i + j * thread_number);
+            parms[i].insert[j] = j;
+        }
+    }
+}
+
+void finish() {
+    cout << "finish" << endl;
+    for (int i = 0; i < thread_number; i++) {
+        delete[] parms[i].insert;
+    }
+    delete[] parms;
+    delete[] workers;
+}
+
 void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
@@ -76,6 +103,22 @@ void *insertWorker(void *args) {
     }
     __sync_fetch_and_add(&exists, inserted);
     store.StopSession();
+}
+
+void initWorkers() {
+    Tracer tracer;
+    tracer.startTime();
+    store.StartSession();
+    cout << "\tTill SessionStart " << tracer.fetchTime() << endl;
+    for (int i = 0; i < thread_number; i++) {
+        pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
+    }
+    for (int i = 0; i < thread_number; i++) {
+        pthread_join(workers[i], nullptr);
+    }
+    store.StopSession();
+    cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
+    cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
 }
 
 void *measureWorker(void *args) {
@@ -114,55 +157,21 @@ void *measureWorker(void *args) {
     }
 
     long elipsed = tracer.getRunTime();
-    output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
+    output[work->tid] << "\t" << work->tid << " " << elipsed << " " << hit << endl;
     __sync_fetch_and_add(&total_time, elipsed);
     __sync_fetch_and_add(&success, hit);
     __sync_fetch_and_add(&failure, fail);
     store.StopSession();
 }
 
-void prepare() {
-    cout << "prepare" << endl;
-    workers = new pthread_t[thread_number];
-    parms = new struct target[thread_number];
-    output = new stringstream[thread_number];
-    for (int i = 0; i < thread_number; i++) {
-        parms[i].tid = i;
-        parms[i].store = &store;
-        parms[i].insert = (uint64_t *) calloc(total_count / thread_number, sizeof(uint64_t *));
-        char buf[DEFAULT_STR_LENGTH];
-        for (int j = 0; j < total_count / thread_number; j++) {
-            std::sprintf(buf, "%d", i + j * thread_number);
-            parms[i].insert[j] = j;
-        }
-    }
-}
-
-void finish() {
-    cout << "finish" << endl;
-    for (int i = 0; i < thread_number; i++) {
-        delete[] parms[i].insert;
-    }
-    delete[] parms;
-    delete[] workers;
-    delete[] output;
-}
-
 void multiWorkers() {
     output = new stringstream[thread_number];
+    total_time = 0;
+    success = 0;
+    failure = 0;
     Tracer tracer;
     tracer.startTime();
-    store.StartSession();
-    cout << "\tTill SessionStart " << tracer.fetchTime() << endl;
-    for (int i = 0; i < thread_number; i++) {
-        pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
-    }
-    for (int i = 0; i < thread_number; i++) {
-        pthread_join(workers[i], nullptr);
-    }
-    store.StopSession();
-    cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
-    cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
+    stopMeasure.store(0, memory_order_relaxed);
     Timer timer;
     timer.start();
     store.StartSession();
@@ -183,7 +192,7 @@ void multiWorkers() {
     cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
     cout << "Gathering ..." << endl;
     cout << "\tRound 0: " << store.Size() << " " << tracer.getRunTime() << endl;
-    for (int i = init_size, d = 1; i <= total_count * 2; i *= 2, d++) {
+    for (int d = 1; init_size <= total_count * 2; init_size *= 2, d++) {
         tracer.startTime();
         store.StartSession();
         cout << "\t\tTill SessionStart " << tracer.fetchTime() << endl;
@@ -200,6 +209,9 @@ void multiWorkers() {
         store.StopSession();
         cout << "\tRound " << d << ": " << store.Size() << " " << tracer.getRunTime() << endl;
     }
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+    delete[] output;
 }
 
 int main(int argc, char **argv) {
@@ -213,9 +225,12 @@ int main(int argc, char **argv) {
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
     cout << "multiinsert" << endl;
-    multiWorkers();
+    initWorkers();
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
+    for (int r = 0; r < 3; r++) {
+        multiWorkers();
+    }
     free(loads);
     finish();
     return 0;
