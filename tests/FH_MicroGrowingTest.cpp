@@ -15,7 +15,7 @@
 
 #define TEST_LOOKUP        1
 
-#define DEFAULT_STORE_BASE 1000LLU
+#define DEFAULT_STORE_BASE 10000LLU
 
 using namespace FASTER::api;
 
@@ -170,7 +170,16 @@ void multiWorkers() {
         cout << outstr;
     }
     cout << "Gathering ..." << endl;
-    cout << "\t" << store.Size() << " " << endl;
+    cout << "\tRound 0: " << store.Size() << " " << endl;
+    for (int i = init_size; i <= total_count * 2; i * 2) {
+        tracer.startTime();
+        static std::atomic<bool> grow_done{false};
+        auto callback = [](uint64_t new_size) {
+            grow_done = true;
+        };
+        store.GrowIndex(callback);
+        cout << "\tRound " << i << ": " << store.Size() << " " << tracer.getRunTime() << endl;
+    }
 }
 
 int main(int argc, char **argv) {
