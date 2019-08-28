@@ -25,9 +25,7 @@ class LightEpoch {
 private:
     /// Entry in epoch table
     struct alignas(Constants::kCacheLineBytes) Entry {
-        Entry()
-                : local_current_epoch{0}, reentrant{0}, phase_finished{Phase::REST} {
-        }
+        Entry() : local_current_epoch{0}, reentrant{0}, phase_finished{Phase::REST} {}
 
         uint64_t local_current_epoch;
         uint32_t reentrant;
@@ -148,8 +146,7 @@ private:
     void Initialize(uint32_t size) {
         num_entries_ = size;
         // do cache-line alignment
-        table_ = reinterpret_cast<Entry *>(aligned_alloc(Constants::kCacheLineBytes,
-                                                         (size + 2) * sizeof(Entry)));
+        table_ = reinterpret_cast<Entry *>(aligned_alloc(Constants::kCacheLineBytes, (size + 2) * sizeof(Entry)));
         new(table_) Entry[size + 2];
         current_epoch = 1;
         safe_to_reclaim_epoch = 0;

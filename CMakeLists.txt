@@ -158,7 +158,26 @@ if (WITH_UTILS)
             utils/UH_HashTest.cpp)
 endif ()
 
+option(WITH_STRUCT "build with structs" ON)
+if (WITH_STRUCT)
+    set(STRUCT_TEST
+            utils/Struct_UnionTest.cpp)
+endif ()
+
 find_package(Threads)
+
+set(STRUCT_TESTS_EXES ${STRUCT_TEST})
+foreach (sourcefile ${STRUCT_TESTS_EXES})
+    get_filename_component(exename ${sourcefile} NAME_WE)
+    add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+    set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+            PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+            EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+            OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+            )
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+endforeach (sourcefile ${STRUCT_TESTS_EXES})
 
 set(XH_TESTS_EXES ${XH_TEST})
 foreach (sourcefile ${XH_TESTS_EXES})

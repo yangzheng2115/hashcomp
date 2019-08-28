@@ -39,13 +39,9 @@ struct FixedPageAddress {
     static constexpr uint64_t kPageBits = kAddressBits - kOffsetBits;
     static constexpr uint64_t kMaxPage = ((uint64_t) 1 << kPageBits) - 1;
 
-    FixedPageAddress()
-            : control_{0} {
-    }
+    FixedPageAddress() : control_{0} {}
 
-    FixedPageAddress(uint64_t control)
-            : control_{control} {
-    }
+    FixedPageAddress(uint64_t control) : control_{control} {}
 
     bool operator==(const FixedPageAddress &other) const {
         assert(reserved == 0);
@@ -102,9 +98,7 @@ static_assert(sizeof(FixedPageAddress) == 8, "sizeof(FixedPageAddress) != 8");
 /// Atomic address into a fixed page.
 class AtomicFixedPageAddress {
 public:
-    AtomicFixedPageAddress(const FixedPageAddress &address)
-            : control_{address.control_} {
-    }
+    AtomicFixedPageAddress(const FixedPageAddress &address) : control_{address.control_} {}
 
     /// Atomic access.
     inline FixedPageAddress load() const {
@@ -152,8 +146,7 @@ public:
 private:
     /// The page's contents.
     item_t elements_[kPageSize];
-    static_assert(alignof(item_t) <= Constants::kCacheLineBytes,
-                  "alignof(item_t) > Constants::kCacheLineBytes");
+    static_assert(alignof(item_t) <= Constants::kCacheLineBytes, "alignof(item_t) > Constants::kCacheLineBytes");
 };
 
 template<typename T>
