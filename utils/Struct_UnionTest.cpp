@@ -10,7 +10,7 @@
 
 using namespace std;
 
-const short TN = 4;
+const short TN = 8;
 
 const short N3 = 24;
 const short N2 = 16;
@@ -30,7 +30,7 @@ union uint32_union {
 
 auto atomicSet = [](atomic<uint32_union> *uu, int tid) {
 //void atomicSet(atomic<uint32_union> *uu, int tid) {
-    for (int i = 0; i < (1 << 7 - 1); i++) {
+    for (int i = 0; i < (1 << 6 - 1); i++) {
         switch (tid % 4) {
             case 0:
                 while (true) {
