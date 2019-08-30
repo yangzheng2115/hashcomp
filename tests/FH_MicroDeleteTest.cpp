@@ -77,9 +77,8 @@ void prepare() {
     output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
         parms[i].tid = i;
-        parms[i].type = true;
+        parms[i].type = false;
         parms[i].store = &store;
-        char buf[DEFAULT_STR_LENGTH];
     }
 }
 
@@ -100,10 +99,14 @@ void *operateWorker(void *args) {
         int idx = -1;
         switch (operatemode) {
             case ITERATION_MODE:
-                idx = work->tid * total_count / thread_number + i % (total_count / thread_number);
+                if (i < total_count / thread_number) {
+                    idx = work->tid * total_count / thread_number + i;
+                }
                 break;
             case PERMUTATE_MODE:
-                idx = (work->tid + i * total_count / thread_number) % total_count;
+                if (i < total_count / thread_number) {
+                    idx = work->tid + i * thread_number;
+                }
                 break;
             case REPLICATE_MODE:
                 idx = i;
@@ -120,7 +123,7 @@ void *operateWorker(void *args) {
             };
             UpsertContext context{loads[idx], loads[idx]};
             Status stat = store.Upsert(context, callback, 1);
-            if (stat == Status::NotFound)
+            if (iter_round == 0 && work->type && stat == Status::Ok)
                 hit++;
             else
                 fail++;
@@ -134,7 +137,8 @@ void *operateWorker(void *args) {
     }
 
     long elipsed = tracer.getRunTime();
-    output[work->tid] << "\t" << work->tid << " " << iter_round << " " << elipsed << " " << hit << endl;
+    if (iter_round == 0)
+        output[work->tid] << "\t" << work->tid << " " << iter_round << " " << elipsed << " " << hit << endl;
     if (work->type) {
         __sync_fetch_and_add(&insert_time, elipsed);
     }
@@ -145,11 +149,16 @@ void *operateWorker(void *args) {
 }
 
 void scheduleWorkers() {
+    insert_time = 0;
+    total_time = 0;
+    success = 0;
+    failure = 0;
     Tracer tracer;
     tracer.startTime();
+    iter_round = 0;
     while (stopMeasure.load(memory_order_relaxed) == 0) {
         for (int i = 0; i < thread_number; i++) {
-            parms[i].type != parms[i].type;
+            parms[i].type = !parms[i].type;
             pthread_create(&workers[i], nullptr, operateWorker, &parms[i]);
         }
         for (int i = 0; i < thread_number; i++) {
@@ -161,10 +170,6 @@ void scheduleWorkers() {
 
 void operateWorkers() {
     output = new stringstream[thread_number];
-    insert_time = 0;
-    total_time = 0;
-    success = 0;
-    failure = 0;
     Tracer tracer;
     tracer.startTime();
     stopMeasure.store(0, memory_order_relaxed);
@@ -212,10 +217,11 @@ void resizeStore() {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 3) {
+    if (argc > 4) {
         thread_number = std::atol(argv[1]);
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
+        operatemode = std::atoi(argv[4]);
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
