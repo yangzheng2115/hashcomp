@@ -34,6 +34,10 @@ size_t init_size = next_power_of_two(DEFAULT_STORE_BASE / 2);
 
 store_t store{init_size, 17179869184, "storage"};
 
+const int max_iter_per_round = 1;
+
+bool oneshotresize = false;
+
 int operatemode = ITERATION_MODE;
 
 uint64_t *loads;
@@ -206,9 +210,11 @@ void operateWorkers() {
     delete[] output;
 }
 
-void resizeStore() {
+bool resizeStore(int max_resize = std::numeric_limits<int>::max()) {
     Tracer tracer;
-    for (int d = 1; init_size <= total_count * 2; init_size *= 2, d++) {
+    bool resized = false;
+    for (int d = 1; init_size <= total_count * 2 & d <= max_resize; init_size *= 2, d++) {
+        resized = true;
         tracer.startTime();
         store.StartSession();
         cout << "\t\tTill SessionStart " << tracer.fetchTime() << endl;
@@ -225,6 +231,7 @@ void resizeStore() {
         store.StopSession();
         cout << "\tRound " << d << ": " << store.Size() << " " << tracer.getRunTime() << endl;
     }
+    return resized;
 }
 
 int main(int argc, char **argv) {
@@ -239,12 +246,20 @@ int main(int argc, char **argv) {
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
-    for (int r = 0; r < 3; r++) {
+    for (int r = 0; r < max_iter_per_round; r++) {
         operateWorkers();
     }
-    resizeStore();
-    for (int r = 0; r < 3; r++) {
-        operateWorkers();
+    while (true) {
+        int resized;
+        if (oneshotresize)
+            resized = resizeStore();
+        else
+            resized = resizeStore(1);
+        if (!resized)
+            break;
+        for (int r = 0; r < max_iter_per_round; r++) {
+            operateWorkers();
+        }
     }
     free(loads);
     finish();
