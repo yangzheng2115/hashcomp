@@ -77,22 +77,23 @@ auto atomicSet = [](atomic<uint32_union> *uu, int tid) {
 int main(int argc, char **argv) {
     uint32_union uu;
     uu.reserve = -1;
-    cout << sizeof(uu) << " " << uu.byte0 << " " << uu.byte1 << " " << uu.byte2 << " " << uu.byte3 << " " << uu.reserve
-         << endl;
+    cout << "  " << sizeof(uu) << " " << uu.byte0 << " " << uu.byte1 << " " << uu.byte2 << " " << uu.byte3 << " "
+         << uu.reserve << endl;
     uu.byte0 = 0x7f;
-    cout << sizeof(uu) << " " << uu.byte0 << " " << uu.byte1 << " " << uu.byte2 << " " << uu.byte3 << " " << uu.reserve
-         << endl;
+    cout << "  " << sizeof(uu) << " " << uu.byte0 << " " << uu.byte1 << " " << uu.byte2 << " " << uu.byte3 << " "
+         << uu.reserve << endl;
     deque<thread> threads;
     atomic<uint32_union> auu(uu);
-    for (int i = 0; i < TN; i++) {
-        threads.emplace_back(atomicSet, &auu, i);
+    for (int r = 0; r < 10; r++) {
+        for (int i = 0; i < TN; i++) {
+            threads.emplace_back(atomicSet, &auu, i);
+        }
+        for (auto &thread: threads) {
+            thread.join();
+        }
+        cout << r << " " << sizeof(auu) << " " << auu.load().byte0 << " " << auu.load().byte1 << " " << auu.load().byte2
+             << " " << auu.load().byte3 << " " << auu.load().reserve << endl;
+        threads.clear();
     }
-    for (auto &thread: threads) {
-        thread.join();
-    }
-    cout << sizeof(uu) << " " << uu.byte0 << " " << uu.byte1 << " " << uu.byte2 << " " << uu.byte3 << " " << uu.reserve
-         << endl;
-    cout << sizeof(auu) << " " << auu.load().byte0 << " " << auu.load().byte1 << " " << auu.load().byte2 << " "
-         << auu.load().byte3 << " " << auu.load().reserve << endl;
     return 0;
 }
