@@ -37,7 +37,7 @@ auto atomicSet = [](atomic<uint32_union> *uu, int tid, bool segmented) {
                     uint32_union uuo = uu->load();
                     uint32_union uun = uuo;
                     if (segmented)
-                        uun.byte0 -= (1 << N0);
+                        uun.byte0 -= 1;
                     else
                         uun.reserve -= (1 << N0);
                     if (uu->compare_exchange_weak(uuo, uun))
@@ -49,7 +49,7 @@ auto atomicSet = [](atomic<uint32_union> *uu, int tid, bool segmented) {
                     uint32_union uuo = uu->load();
                     uint32_union uun = uuo;
                     if (segmented)
-                        uun.byte1 -= (1 << N1);
+                        uun.byte1 -= 1;
                     else
                         uun.reserve -= (1 << N1);
                     if (uu->compare_exchange_weak(uuo, uun))
@@ -61,7 +61,7 @@ auto atomicSet = [](atomic<uint32_union> *uu, int tid, bool segmented) {
                     uint32_union uuo = uu->load();
                     uint32_union uun = uuo;
                     if (segmented)
-                        uun.byte2 -= (1 << N2);
+                        uun.byte2 -= 1;
                     else
                         uun.reserve -= (1 << N2);
                     if (uu->compare_exchange_weak(uuo, uun))
@@ -73,7 +73,7 @@ auto atomicSet = [](atomic<uint32_union> *uu, int tid, bool segmented) {
                     uint32_union uuo = uu->load();
                     uint32_union uun = uuo;
                     if (segmented)
-                        uun.byte3 -= (1 << N3);
+                        uun.byte3 -= 1;
                     else
                         uun.reserve -= (1 << N3);
                     if (uu->compare_exchange_weak(uuo, uun))
