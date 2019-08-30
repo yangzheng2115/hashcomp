@@ -189,9 +189,20 @@ void operateWorkers() {
         string outstr = output[t].str();
         cout << outstr;
     }
-    cout << "Total round: " << iter_round << " " << store.Size() << " " << tracer.getRunTime() << "operations: "
-         << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
+    double total_tpt = (double) (success + failure) * thread_number / total_time;
+    double insert_tpt = 0;
+    double delete_tpt = 0;
+    if (iter_round % 2 == 0) {
+        insert_tpt = (double) (success + failure) / 2 * thread_number / insert_time;
+        delete_tpt = (double) (success + failure) / 2 * thread_number / (total_time - insert_time);
+    } else {
+        insert_tpt = (double) ((success + failure) / 2 + 1) * thread_number / insert_time;
+        delete_tpt = (double) (success + failure) / 2 * thread_number / (total_time - insert_time);
+    }
+    cout << "Total round: " << iter_round << " " << store.Size() << " " << tracer.getRunTime() << endl;
+    cout << "insert time: " << insert_time << " delete time: " << (total_time - insert_time) << endl;
+    cout << "operations: " << success << " failure: " << failure << endl;
+    cout << "total tpt: " << total_tpt << " insert tpt: " << insert_tpt << " delete tpt: " << delete_tpt << endl;
     delete[] output;
 }
 
