@@ -249,16 +249,16 @@ int main(int argc, char **argv) {
     Tracer tracer;
     tracer.startTime();
     store = new store_t{init_size, 17179869184, "storage"};
-    cout << "Resize round: " << -1 << " keyspace: " << init_size << " storesize: " << store->Size()
-         << " elipsed: " << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
+    cout << "Before insertion: " << -1 << " keyspace: " << init_size << " storesize: " << store->Size() << " elipsed: "
+         << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
     for (int r = 0; r < max_iter_per_round; r++) {
         operateWorkers();
     }
-    cout << "Resize round: " << 0 << " keyspace: " << init_size << " storesize: " << store->Size()
-         << " elipsed: " << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
+    cout << "After insertion: " << 0 << " keyspace: " << init_size << " storesize: " << store->Size() << " elipsed: "
+         << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
     while (true) {
         int resized;
         if (oneshotresize)
