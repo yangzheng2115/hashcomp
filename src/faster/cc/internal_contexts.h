@@ -224,8 +224,7 @@ public:
 
 protected:
     Status DeepCopy_Internal(IAsyncContext *&context_copy) final {
-        return IAsyncContext::DeepCopy_Internal(*this, PendingContext<key_t>::caller_context,
-                                                context_copy);
+        return IAsyncContext::DeepCopy_Internal(*this, PendingContext<key_t>::caller_context, context_copy);
     }
 
 private:
@@ -375,8 +374,7 @@ static_assert(sizeof(PersistentExecContext) == 32, "sizeof(PersistentExecContext
 /// Per-thread execution context. (Also includes state kept in-memory-only.)
 struct ExecutionContext : public PersistentExecContext {
     /// Default constructor.
-    ExecutionContext()
-            : phase{Phase::INVALID}, io_id{0} {
+    ExecutionContext() : phase{Phase::INVALID}, io_id{0} {
     }
 
     void Initialize(Phase phase_, uint32_t version_, const Guid &guid_, uint64_t serial_num_) {
@@ -401,8 +399,7 @@ struct ExecutionContext : public PersistentExecContext {
     /// For each pending I/O, maps io_id to the hash of the key being retrieved.
     std::unordered_map<uint64_t, KeyHash> pending_ios;
 
-    /// The I/O completion thread hands the PendingContext back to the thread that issued the
-    /// request.
+    /// The I/O completion thread hands the PendingContext back to the thread that issued the request.
     concurrent_queue<AsyncIOContext *> io_responses;
 };
 

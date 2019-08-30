@@ -142,9 +142,8 @@ public:
     template<class MC>
     inline Status Rmw(MC &context, AsyncCallback callback, uint64_t monotonic_serial_num);
 
-    /// Delete() not yet implemented!
     template<class DC>
-    inline Status Delete(const K &key, DC &context, uint64_t lsn);
+    inline Status Delete(DC &context, AsyncCallback callback, uint64_t lsn);
 
     inline bool CompletePending(bool wait = false);
 
@@ -190,6 +189,9 @@ private:
 
     template<class C>
     inline OperationStatus InternalRmw(C &pending_context, bool retrying);
+
+    template<class C>
+    inline OperationStatus InternalDelete(C &pending_context);
 
     inline OperationStatus InternalRetryPendingRmw(async_pending_rmw_context_t &pending_context);
 
@@ -643,7 +645,7 @@ inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback, uint64
 
 template<class K, class V, class D>
 template<class DC>
-inline Status FasterKv<K, V, D>::Delete(const K &key, DC &context, uint64_t lsn) {
+inline Status FasterKv<K, V, D>::Delete(DC &context, AsyncCallback callback, uint64_t lsn) {
     return Status::Ok;
 }
 
@@ -1159,6 +1161,12 @@ inline OperationStatus FasterKv<K, V, D>::InternalRmw(C &pending_context, bool r
         }
         return OperationStatus::RETRY_NOW;
     }
+}
+
+template<class K, class V, class D>
+template<class C>
+inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
+    return OperationStatus::SUCCESS;
 }
 
 template<class K, class V, class D>

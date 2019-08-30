@@ -50,6 +50,25 @@ public:
     static constexpr inline bool IsPowerOfTwo(uint64_t x) {
         return (x > 0) && ((x & (x - 1)) == 0);
     }
+
+    static inline int retStatus(Status stat) {
+        switch (stat) {
+            case Status::Ok:
+                return 0;
+            case Status::Pending:
+                return 1;
+            case Status::NotFound :
+                return 2;
+            case Status::OutOfMemory :
+                return 3;
+            case Status::IOError :
+                return 4;
+            case Status::Corruption :
+                return 5;
+            case Status::Aborted :
+                return 6;
+        }
+    }
 };
 
 }

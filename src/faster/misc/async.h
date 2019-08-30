@@ -76,8 +76,7 @@ protected:
 
     /// Another common pattern: deep copy, when context has a parent/caller context.
     template<class C>
-    inline static Status DeepCopy_Internal(C &context, IAsyncContext *caller_context,
-                                           IAsyncContext *&context_copy) {
+    inline static Status DeepCopy_Internal(C &context, IAsyncContext *caller_context, IAsyncContext *&context_copy) {
         context_copy = nullptr;
         auto ctxt = alloc_context<C>(sizeof(C));
         if (!ctxt.get()) return Status::OutOfMemory;

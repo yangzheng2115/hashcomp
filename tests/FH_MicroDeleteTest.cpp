@@ -132,7 +132,7 @@ void *operateWorker(void *args) {
                 CallbackContext<DeleteContext> context(ctxt);
             };
             DeleteContext context{loads[idx]};
-            store.Delete(loads[i], context, 1);
+            store.Delete(context, callback, 1);
         }
     }
 
@@ -189,8 +189,8 @@ void operateWorkers() {
         string outstr = output[t].str();
         cout << outstr;
     }
-    cout << "\tRound 0: " << store.Size() << " " << tracer.getRunTime() << endl;
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
+    cout << "Total round: " << iter_round << " " << store.Size() << " " << tracer.getRunTime() << "operations: "
+         << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
     delete[] output;
 }
@@ -223,12 +223,11 @@ int main(int argc, char **argv) {
         total_count = std::atol(argv[3]);
         operatemode = std::atoi(argv[4]);
     }
-    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
+    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " type: "
+         << operatemode << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
     for (int r = 0; r < 3; r++) {
         operateWorkers();
     }
