@@ -103,8 +103,7 @@ public:
     typedef AsyncPendingUpsertContext<key_t> async_pending_upsert_context_t;
     typedef AsyncPendingRmwContext<key_t> async_pending_rmw_context_t;
 
-    FasterKv(uint64_t table_size, uint64_t log_size, const std::string &filename,
-             double log_mutable_fraction = 0.9)
+    FasterKv(uint64_t table_size, uint64_t log_size, const std::string &filename, double log_mutable_fraction = 0.9)
             : min_table_size_{table_size}, disk{filename, epoch_},
               hlog{log_size, epoch_, disk, disk.log(), log_mutable_fraction},
               system_state_{Action::None, Phase::REST, 1}, num_pending_ios{0} {
@@ -144,22 +143,22 @@ public:
     inline Status Rmw(MC &context, AsyncCallback callback, uint64_t monotonic_serial_num);
 
     /// Delete() not yet implemented!
-    // void Delete(const Key& key, Context& context, uint64_t lsn);
+    template<class DC>
+    inline Status Delete(const K &key, DC &context, uint64_t lsn);
+
     inline bool CompletePending(bool wait = false);
 
     /// Checkpoint/recovery operations.
     bool Checkpoint(void(*index_persistence_callback)(Status result),
-                    void(*hybrid_log_persistence_callback)(Status result,
-                                                           uint64_t persistent_serial_num), Guid &token);
+                    void(*hybrid_log_persistence_callback)(Status result, uint64_t persistent_serial_num), Guid &token);
 
     bool CheckpointIndex(void(*index_persistence_callback)(Status result), Guid &token);
 
-    bool CheckpointHybridLog(void(*hybrid_log_persistence_callback)(Status result,
-                                                                    uint64_t persistent_serial_num),
+    bool CheckpointHybridLog(void(*hybrid_log_persistence_callback)(Status result, uint64_t persistent_serial_num),
                              Guid &token);
 
-    Status Recover(const Guid &index_token, const Guid &hybrid_log_token, uint32_t &version,
-                   std::vector<Guid> &session_ids);
+    Status
+    Recover(const Guid &index_token, const Guid &hybrid_log_token, uint32_t &version, std::vector<Guid> &session_ids);
 
     /// Truncating the head of the log.
     bool ShiftBeginAddress(Address address, GcState::truncate_callback_t truncate_callback,
@@ -194,11 +193,9 @@ private:
 
     inline OperationStatus InternalRetryPendingRmw(async_pending_rmw_context_t &pending_context);
 
-    OperationStatus InternalContinuePendingRead(ExecutionContext &ctx,
-                                                AsyncIOContext &io_context);
+    OperationStatus InternalContinuePendingRead(ExecutionContext &ctx, AsyncIOContext &io_context);
 
-    OperationStatus InternalContinuePendingRmw(ExecutionContext &ctx,
-                                               AsyncIOContext &io_context);
+    OperationStatus InternalContinuePendingRmw(ExecutionContext &ctx, AsyncIOContext &io_context);
 
     // Find the hash bucket entry, if any, corresponding to the specified hash.
     inline const AtomicHashBucketEntry *FindEntry(KeyHash hash) const;
@@ -206,19 +203,17 @@ private:
     // If a hash bucket entry corresponding to the specified hash exists, return it; otherwise,
     // create a new entry. The caller can use the "expected_entry" to CAS its desired address into
     // the entry.
-    inline AtomicHashBucketEntry *FindOrCreateEntry(KeyHash hash, HashBucketEntry &expected_entry,
-                                                    HashBucket *&bucket);
+    inline AtomicHashBucketEntry *FindOrCreateEntry(KeyHash hash, HashBucketEntry &expected_entry, HashBucket *&bucket);
 
-    inline Address TraceBackForKeyMatch(const key_t &key, Address from_address,
-                                        Address min_offset) const;
+    inline Address TraceBackForKeyMatch(const key_t &key, Address from_address, Address min_offset) const;
 
-    Address TraceBackForOtherChainStart(uint64_t old_size, uint64_t new_size, Address from_address,
-                                        Address min_address, uint8_t side);
+    Address TraceBackForOtherChainStart(uint64_t old_size, uint64_t new_size, Address from_address, Address min_address,
+                                        uint8_t side);
 
     // If a hash bucket entry corresponding to the specified hash exists, return it; otherwise,
     // return an unused bucket entry.
-    inline AtomicHashBucketEntry *FindTentativeEntry(KeyHash hash, HashBucket *bucket,
-                                                     uint8_t version, HashBucketEntry &expected_entry);
+    inline AtomicHashBucketEntry *
+    FindTentativeEntry(KeyHash hash, HashBucket *bucket, uint8_t version, HashBucketEntry &expected_entry);
 
     // Looks for an entry that has the same
     inline bool HasConflictingEntry(KeyHash hash, const HashBucket *bucket, uint8_t version,
@@ -226,26 +221,21 @@ private:
 
     inline Address BlockAllocate(uint32_t record_size);
 
-    inline Status HandleOperationStatus(ExecutionContext &ctx,
-                                        pending_context_t &pending_context,
-                                        OperationStatus internal_status, bool &async);
+    inline Status
+    HandleOperationStatus(ExecutionContext &ctx, pending_context_t &pending_context, OperationStatus internal_status,
+                          bool &async);
 
-    inline Status PivotAndRetry(ExecutionContext &ctx, pending_context_t &pending_context,
-                                bool &async);
+    inline Status PivotAndRetry(ExecutionContext &ctx, pending_context_t &pending_context, bool &async);
 
-    inline Status RetryLater(ExecutionContext &ctx, pending_context_t &pending_context,
-                             bool &async);
+    inline Status RetryLater(ExecutionContext &ctx, pending_context_t &pending_context, bool &async);
 
     inline constexpr uint32_t MinIoRequestSize() const;
 
-    inline Status IssueAsyncIoRequest(ExecutionContext &ctx, pending_context_t &pending_context,
-                                      bool &async);
+    inline Status IssueAsyncIoRequest(ExecutionContext &ctx, pending_context_t &pending_context, bool &async);
 
-    void AsyncGetFromDisk(Address address, uint32_t num_records, AsyncIOCallback callback,
-                          AsyncIOContext &context);
+    void AsyncGetFromDisk(Address address, uint32_t num_records, AsyncIOCallback callback, AsyncIOContext &context);
 
-    static void AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status result,
-                                         size_t bytes_transferred);
+    static void AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status result, size_t bytes_transferred);
 
     void CompleteIoPendingRequests(ExecutionContext &context);
 
@@ -294,8 +284,7 @@ private:
 
     void SplitHashTableBuckets();
 
-    void AddHashEntry(HashBucket *&bucket, uint32_t &next_idx, uint8_t version,
-                      HashBucketEntry entry);
+    void AddHashEntry(HashBucket *&bucket, uint32_t &next_idx, uint8_t version, HashBucketEntry entry);
 
     /// Access the current and previous (thread-local) execution contexts.
     const ExecutionContext &thread_ctx() const {
@@ -454,9 +443,7 @@ inline const AtomicHashBucketEntry *FasterKv<K, V, D>::FindEntry(KeyHash hash) c
 }
 
 template<class K, class V, class D>
-inline AtomicHashBucketEntry *FasterKv<K, V, D>::FindTentativeEntry(KeyHash hash,
-                                                                    HashBucket *bucket,
-                                                                    uint8_t version,
+inline AtomicHashBucketEntry *FasterKv<K, V, D>::FindTentativeEntry(KeyHash hash, HashBucket *bucket, uint8_t version,
                                                                     HashBucketEntry &expected_entry) {
     expected_entry = HashBucketEntry::kInvalidEntry;
     AtomicHashBucketEntry *atomic_entry = nullptr;
@@ -583,8 +570,7 @@ FasterKv<K, V, D>::FindOrCreateEntry(KeyHash hash, HashBucketEntry &expected_ent
 
 template<class K, class V, class D>
 template<class RC>
-inline Status FasterKv<K, V, D>::Read(RC &context, AsyncCallback callback,
-                                      uint64_t monotonic_serial_num) {
+inline Status FasterKv<K, V, D>::Read(RC &context, AsyncCallback callback, uint64_t monotonic_serial_num) {
     typedef RC read_context_t;
     typedef PendingReadContext<RC> pending_read_context_t;
     static_assert(std::is_base_of<value_t, typename read_context_t::value_t>::value,
@@ -610,8 +596,7 @@ inline Status FasterKv<K, V, D>::Read(RC &context, AsyncCallback callback,
 
 template<class K, class V, class D>
 template<class UC>
-inline Status FasterKv<K, V, D>::Upsert(UC &context, AsyncCallback callback,
-                                        uint64_t monotonic_serial_num) {
+inline Status FasterKv<K, V, D>::Upsert(UC &context, AsyncCallback callback, uint64_t monotonic_serial_num) {
     typedef UC upsert_context_t;
     typedef PendingUpsertContext<UC> pending_upsert_context_t;
     static_assert(std::is_base_of<value_t, typename upsert_context_t::value_t>::value,
@@ -635,8 +620,7 @@ inline Status FasterKv<K, V, D>::Upsert(UC &context, AsyncCallback callback,
 
 template<class K, class V, class D>
 template<class MC>
-inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback,
-                                     uint64_t monotonic_serial_num) {
+inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback, uint64_t monotonic_serial_num) {
     typedef MC rmw_context_t;
     typedef PendingRmwContext<MC> pending_rmw_context_t;
     static_assert(std::is_base_of<value_t, typename rmw_context_t::value_t>::value,
@@ -655,6 +639,12 @@ inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback,
     }
     thread_ctx().serial_num = monotonic_serial_num;
     return status;
+}
+
+template<class K, class V, class D>
+template<class DC>
+inline Status FasterKv<K, V, D>::Delete(const K &key, DC &context, uint64_t lsn) {
+    return Status::Ok;
 }
 
 template<class K, class V, class D>
@@ -1172,8 +1162,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalRmw(C &pending_context, bool r
 }
 
 template<class K, class V, class D>
-inline OperationStatus FasterKv<K, V, D>::InternalRetryPendingRmw(
-        async_pending_rmw_context_t &pending_context) {
+inline OperationStatus FasterKv<K, V, D>::InternalRetryPendingRmw(async_pending_rmw_context_t &pending_context) {
     OperationStatus status = InternalRmw(pending_context, true);
     if (status == OperationStatus::SUCCESS && pending_context.version != thread_ctx().version) {
         status = OperationStatus::SUCCESS_UNMARK;
@@ -1182,8 +1171,8 @@ inline OperationStatus FasterKv<K, V, D>::InternalRetryPendingRmw(
 }
 
 template<class K, class V, class D>
-inline Address FasterKv<K, V, D>::TraceBackForKeyMatch(const key_t &key, Address from_address,
-                                                       Address min_offset) const {
+inline Address
+FasterKv<K, V, D>::TraceBackForKeyMatch(const key_t &key, Address from_address, Address min_offset) const {
     while (from_address >= min_offset) {
         const record_t *record = reinterpret_cast<const record_t *>(hlog.Get(from_address));
         if (key == record->key()) {
@@ -1197,8 +1186,7 @@ inline Address FasterKv<K, V, D>::TraceBackForKeyMatch(const key_t &key, Address
 }
 
 template<class K, class V, class D>
-inline Status FasterKv<K, V, D>::HandleOperationStatus(ExecutionContext &ctx,
-                                                       pending_context_t &pending_context,
+inline Status FasterKv<K, V, D>::HandleOperationStatus(ExecutionContext &ctx, pending_context_t &pending_context,
                                                        OperationStatus internal_status, bool &async) {
     async = false;
     switch (internal_status) {
@@ -1994,8 +1982,7 @@ bool FasterKv<K, V, D>::CleanHashTableBuckets() {
 }
 
 template<class K, class V, class D>
-void FasterKv<K, V, D>::AddHashEntry(HashBucket *&bucket, uint32_t &next_idx, uint8_t version,
-                                     HashBucketEntry entry) {
+void FasterKv<K, V, D>::AddHashEntry(HashBucket *&bucket, uint32_t &next_idx, uint8_t version, HashBucketEntry entry) {
     if (next_idx == HashBucket::kNumEntries) {
         // Need to allocate a new bucket, first.
         FixedPageAddress new_bucket_addr = overflow_buckets_allocator_[version].Allocate();
@@ -2009,9 +1996,8 @@ void FasterKv<K, V, D>::AddHashEntry(HashBucket *&bucket, uint32_t &next_idx, ui
 }
 
 template<class K, class V, class D>
-Address FasterKv<K, V, D>::TraceBackForOtherChainStart(uint64_t old_size, uint64_t new_size,
-                                                       Address from_address, Address min_address,
-                                                       uint8_t side) {
+Address FasterKv<K, V, D>::TraceBackForOtherChainStart(uint64_t old_size, uint64_t new_size, Address from_address,
+                                                       Address min_address, uint8_t side) {
     assert(side == 0 || side == 1);
     // Search back as far as min_address.
     while (from_address >= min_address) {
@@ -2577,8 +2563,7 @@ bool FasterKv<K, V, D>::Checkpoint(void(*index_persistence_callback)(Status resu
 }
 
 template<class K, class V, class D>
-bool FasterKv<K, V, D>::CheckpointIndex(void(*index_persistence_callback)(Status result),
-                                        Guid &token) {
+bool FasterKv<K, V, D>::CheckpointIndex(void(*index_persistence_callback)(Status result), Guid &token) {
     // Only one thread can initiate a checkpoint at a time.
     SystemState expected{Action::None, Phase::REST, system_state_.load().version};
     SystemState desired{Action::CheckpointIndex, Phase::REST, expected.version};
@@ -2632,8 +2617,7 @@ bool FasterKv<K, V, D>::CheckpointHybridLog(void(*hybrid_log_persistence_callbac
 }
 
 template<class K, class V, class D>
-Status FasterKv<K, V, D>::Recover(const Guid &index_token, const Guid &hybrid_log_token,
-                                  uint32_t &version,
+Status FasterKv<K, V, D>::Recover(const Guid &index_token, const Guid &hybrid_log_token, uint32_t &version,
                                   std::vector<Guid> &session_ids) {
     version = 0;
     session_ids.clear();

@@ -109,6 +109,32 @@ private:
     Key key_;
 };
 
+class DeleteContext : public IAsyncContext {
+public:
+    typedef Key key_t;
+    typedef Value value_t;
+
+    DeleteContext(uint64_t key) : key_{key} {}
+
+    DeleteContext(const DeleteContext &other) : key_{other.key_} {}
+
+    inline const Key &key() const {
+        return key_;
+    }
+
+    inline void Get(const value_t &value) {}
+
+    inline void GetAtomic(const value_t &value) {}
+
+protected:
+    Status DeepCopy_Internal(IAsyncContext *&context_copy) {
+        return IAsyncContext::DeepCopy_Internal(*this, context_copy);
+    }
+
+private:
+    Key key_;
+};
+
 /// Class passed to store_t::Upsert().
 class UpsertContext : public IAsyncContext {
 public:
