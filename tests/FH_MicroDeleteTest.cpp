@@ -32,7 +32,9 @@ using store_t = FasterKv<Key, Value, disk_t>;
 
 size_t init_size = next_power_of_two(DEFAULT_STORE_BASE / 2);
 
-store_t store{init_size, 17179869184, "storage"};
+int resize_round = 1;
+
+store_t *store;
 
 const int max_iter_per_round = 1;
 
@@ -82,7 +84,7 @@ void prepare() {
     for (int i = 0; i < thread_number; i++) {
         parms[i].tid = i;
         parms[i].type = false;
-        parms[i].store = &store;
+        parms[i].store = store;
     }
 }
 
@@ -98,7 +100,7 @@ void *operateWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
-    store.StartSession();
+    store->StartSession();
     for (int i = 0; i < total_count; i++) {
         int idx = -1;
         switch (operatemode) {
@@ -126,7 +128,7 @@ void *operateWorker(void *args) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
             UpsertContext context{loads[idx], loads[idx]};
-            Status stat = store.Upsert(context, callback, 1);
+            Status stat = store->Upsert(context, callback, 1);
             if (iter_round == 0 && work->type && stat == Status::Ok)
                 hit++;
             else
@@ -136,7 +138,7 @@ void *operateWorker(void *args) {
                 CallbackContext<DeleteContext> context(ctxt);
             };
             DeleteContext context{loads[idx]};
-            store.Delete(context, callback, 1);
+            store->Delete(context, callback, 1);
         }
     }
 
@@ -149,7 +151,7 @@ void *operateWorker(void *args) {
     __sync_fetch_and_add(&total_time, elipsed);
     __sync_fetch_and_add(&success, hit);
     __sync_fetch_and_add(&failure, fail);
-    store.StopSession();
+    store->StopSession();
 }
 
 void scheduleWorkers() {
@@ -179,14 +181,14 @@ void operateWorkers() {
     stopMeasure.store(0, memory_order_relaxed);
     Timer timer;
     timer.start();
-    store.StartSession();
+    store->StartSession();
     thread t = thread(scheduleWorkers);
     while (timer.elapsedSeconds() < default_timer_range) {
         sleep(1);
     }
     stopMeasure.store(1, memory_order_relaxed);
     t.join();
-    store.StopSession();
+    store->StopSession();
     cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
     cout << "Gathering ..." << endl;
     for (int t = 0; t < thread_number; t++) {
@@ -203,7 +205,7 @@ void operateWorkers() {
         insert_tpt = (double) ((success + failure) / 2 + 1) * thread_number / insert_time;
         delete_tpt = (double) (success + failure) / 2 * thread_number / (total_time - insert_time);
     }
-    cout << "Total round: " << iter_round << " " << store.Size() << " " << tracer.getRunTime() << endl;
+    cout << "Total round: " << iter_round << " " << store->Size() << " " << tracer.getRunTime() << endl;
     cout << "insert time: " << insert_time << " delete time: " << (total_time - insert_time) << endl;
     cout << "operations: " << success << " failure: " << failure << endl;
     cout << "total tpt: " << total_tpt << " insert tpt: " << insert_tpt << " delete tpt: " << delete_tpt << endl;
@@ -216,20 +218,21 @@ bool resizeStore(int max_resize = std::numeric_limits<int>::max()) {
     for (int d = 1; init_size <= total_count * 2 & d <= max_resize; init_size *= 2, d++) {
         resized = true;
         tracer.startTime();
-        store.StartSession();
-        cout << "\t\tTill SessionStart " << tracer.fetchTime() << endl;
+        store->StartSession();
+        cout << "\tTill SessionStart " << tracer.fetchTime() << endl;
         static std::atomic<bool> grow_done{false};
         auto callback = [](uint64_t new_size) {
             grow_done = true;
         };
-        store.GrowIndex(callback);
+        store->GrowIndex(callback);
         while (!grow_done) {
-            store.Refresh();
+            store->Refresh();
             std::this_thread::yield();
         }
-        cout << "\t\tTill SessionStop " << tracer.fetchTime() << endl;
-        store.StopSession();
-        cout << "\tRound " << d << ": " << store.Size() << " " << tracer.getRunTime() << endl;
+        cout << "\tTill SessionStop " << tracer.fetchTime() << endl;
+        store->StopSession();
+        cout << "Resize round: " << resize_round++ << " keyspace: " << init_size << " storesize: " << store->Size()
+             << " elipsed: " << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
     }
     return resized;
 }
@@ -243,12 +246,19 @@ int main(int argc, char **argv) {
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " type: "
          << operatemode << endl;
+    Tracer tracer;
+    tracer.startTime();
+    store = new store_t{init_size, 17179869184, "storage"};
+    cout << "Resize round: " << -1 << " keyspace: " << init_size << " storesize: " << store->Size()
+         << " elipsed: " << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
     for (int r = 0; r < max_iter_per_round; r++) {
         operateWorkers();
     }
+    cout << "Resize round: " << 0 << " keyspace: " << init_size << " storesize: " << store->Size()
+         << " elipsed: " << tracer.getRunTime() << " " << store->hlog.GetTailAddress().offset() << endl;
     while (true) {
         int resized;
         if (oneshotresize)
@@ -263,5 +273,6 @@ int main(int argc, char **argv) {
     }
     free(loads);
     finish();
+    delete store;
     return 0;
 }
