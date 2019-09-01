@@ -2,17 +2,17 @@
 // Created by lwh on 19-8-30.
 //
 #include <iostream>
-#include <sstream>
 #include "tracer.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include "faster.h"
 #include "kvcontext.h"
 
 using namespace std;
 using namespace FASTER::api;
 
-#define DEFAULT_STORE_BASE (1LLU << 2)
+#define DEFAULT_STORE_BASE (1LLU << 1)
+
+#define DEFAULT_STORE_SIZE ((1LLU << 13) + 656) // lower bound of non-conflict capacity
 
 #ifdef _WIN32
 typedef hreadPoolIoHandler handler_t;
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
         auto upsertCallback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
-        for (uint64_t i = 0; i < (1LLU << 2); i++) {
+        for (uint64_t i = 0; i < DEFAULT_STORE_SIZE; i++) {
             UpsertContext upsertContext{i, i};
             Status uStat = store.Upsert(upsertContext, upsertCallback, 1);
             cout << "\t" << Utility::retStatus(uStat) << " " << store.Size() << endl;
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
         auto deleteCallback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<DeleteContext> context(ctxt);
         };
-        DeleteContext deleteContext(1);
+        DeleteContext deleteContext(0);
         Status dStat = store.Delete(deleteContext, deleteCallback, 1);
         assert(dStat == Status::Ok);
         cout << "\t" << Utility::retStatus(dStat) << " " << store.Size() << endl;
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
         };
         ReadContext readContext(1);
         Status rStat = store.Read(readContext, readCallback, 1);
-        assert(rStat == Status::NotFound);
+        //assert(rStat == Status::NotFound);
         cout << "\t" << Utility::retStatus(rStat) << " " << store.Size() << endl;
     }
     return 0;

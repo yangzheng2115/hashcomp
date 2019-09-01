@@ -646,7 +646,25 @@ inline Status FasterKv<K, V, D>::Rmw(MC &context, AsyncCallback callback, uint64
 template<class K, class V, class D>
 template<class DC>
 inline Status FasterKv<K, V, D>::Delete(DC &context, AsyncCallback callback, uint64_t lsn) {
-    return Status::Ok;
+    typedef DC delete_context_t;
+    typedef PendingDeleteContext<DC> pending_delete_context_t;
+    static_assert(std::is_base_of<value_t, typename delete_context_t::value_t>::value,
+                  "value_t is not a base class of delete_context_t::value_t");
+    static_assert(alignof(value_t) == alignof(typename delete_context_t::value_t),
+                  "alignof(value) != (typename delete_context_t::value_t");
+
+    pending_delete_context_t pending_context(context, callback);
+    OperationStatus internal_status = InternalDelete(pending_context);
+    Status status;
+
+    if (internal_status == OperationStatus::SUCCESS) {
+        status = Status::Ok;
+    } else {
+        bool async;
+        status = HandleOperationStatus(thread_ctx(), pending_context, internal_status, async);
+    }
+    thread_ctx().serial_num = lsn;
+    return status;
 }
 
 template<class K, class V, class D>
@@ -1166,6 +1184,40 @@ inline OperationStatus FasterKv<K, V, D>::InternalRmw(C &pending_context, bool r
 template<class K, class V, class D>
 template<class C>
 inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
+    typedef C pending_upsert_context_t;
+
+    if (thread_ctx().phase != Phase::REST) {
+        HeavyEnter();
+    }
+
+    const key_t &key = pending_context.key();
+    KeyHash hash = key.GetHash();
+    HashBucketEntry expected_entry;
+    HashBucket *bucket;
+    const AtomicHashBucketEntry *atomic_entry = FindEntry(hash);
+    if (!atomic_entry) {
+        return OperationStatus::NOT_FOUND;
+    }
+
+    HashBucketEntry entry = atomic_entry->load();
+    Address address = entry.address();
+    Address begin_address = hlog.begin_address.load();
+    Address head_address = hlog.head_address.load();
+    Address safe_read_only_address = hlog.safe_read_only_address.load();
+    Address read_only_address = hlog.read_only_address.load();
+    uint64_t latest_record_version = 0;
+
+    if (address >= head_address) {
+        const record_t *record = reinterpret_cast<const record_t *>(hlog.Get(address));
+        latest_record_version = record->header.checkpoint_version;
+        K oldkey = record->key();
+        Address base_address = entry.address();
+        if (key != record->key()) {
+            address = TraceBackForKeyMatch(key, record->header.previous_address(), head_address);
+        }
+        oldkey = record->key();
+    }
+
     return OperationStatus::SUCCESS;
 }
 

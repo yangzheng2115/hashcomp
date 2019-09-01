@@ -27,8 +27,7 @@ typedef void(*AsyncIOCallback)(IAsyncContext *context, Status result, size_t byt
 /// Standard interface for contexts used by async callbacks.
 class IAsyncContext {
 public:
-    IAsyncContext()
-            : from_deep_copy_{false} {
+    IAsyncContext() : from_deep_copy_{false} {
     }
 
     virtual ~IAsyncContext() {}

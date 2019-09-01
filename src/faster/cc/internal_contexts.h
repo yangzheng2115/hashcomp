@@ -349,6 +349,61 @@ public:
     }
 };
 
+template<class K>
+class AsyncPendingDeleteContext : public PendingContext<K> {
+public:
+    typedef K key_t;
+protected:
+    AsyncPendingDeleteContext(IAsyncContext &caller_context_, AsyncCallback caller_callback_)
+            : PendingContext<key_t>(OperationType::Delete, caller_context_, caller_callback_) {
+    }
+
+    /// The deep copy constructor.
+    AsyncPendingDeleteContext(AsyncPendingDeleteContext &other, IAsyncContext *caller_context)
+            : PendingContext<key_t>(other, caller_context) {
+    }
+
+public:
+};
+
+/// A synchronous Delete() context preserves its type information.
+template<class DC>
+class PendingDeleteContext : public AsyncPendingDeleteContext<typename DC::key_t> {
+public:
+    typedef DC delete_context_t;
+    typedef typename delete_context_t::key_t key_t;
+    typedef typename delete_context_t::value_t value_t;
+    typedef Record <key_t, value_t> record_t;
+
+    PendingDeleteContext(delete_context_t &caller_context_, AsyncCallback caller_callback_)
+            : AsyncPendingDeleteContext<key_t>(caller_context_, caller_callback_) {
+    }
+
+    /// The deep copy constructor.
+    PendingDeleteContext(PendingDeleteContext &other, IAsyncContext *caller_context_)
+            : AsyncPendingDeleteContext<key_t>(other, caller_context_) {
+    }
+
+protected:
+    Status DeepCopy_Internal(IAsyncContext *&context_copy) final {
+        return IAsyncContext::DeepCopy_Internal(*this, PendingContext<key_t>::caller_context, context_copy);
+    }
+
+private:
+    inline const delete_context_t &delete_context() const {
+        return *static_cast<const delete_context_t *>(PendingContext<key_t>::caller_context);
+    }
+
+    inline delete_context_t &delete_context() {
+        return *static_cast<delete_context_t *>(PendingContext<key_t>::caller_context);
+    }
+
+public:
+    inline const key_t &key() const final {
+        return delete_context().key();
+    }
+};
+
 //class AsyncIOContext;
 
 /// Per-thread execution context. (Just the stuff that's checkpointed to disk.)
