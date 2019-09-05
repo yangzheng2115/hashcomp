@@ -7,7 +7,7 @@
 
 #ifdef _WIN32
 #include <malloc.h>
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) || defined(__CYGWIN__)
 
 #include <boost/align/aligned_alloc.hpp>
 
