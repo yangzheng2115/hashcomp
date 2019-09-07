@@ -16,6 +16,8 @@ class ReadContext;
 
 class UpsertContext;
 
+class DeleteContext;
+
 class RmwContext;
 
 /// This benchmark stores 8-byte keys in key-value store.
@@ -67,6 +69,8 @@ public:
 
     friend class UpsertContext;
 
+    friend class DeleteContext;
+
     friend class RmwContext;
 
 private:
@@ -109,32 +113,6 @@ private:
     Key key_;
 };
 
-class DeleteContext : public IAsyncContext {
-public:
-    typedef Key key_t;
-    typedef Value value_t;
-
-    DeleteContext(uint64_t key) : key_{key} {}
-
-    DeleteContext(const DeleteContext &other) : key_{other.key_} {}
-
-    inline const Key &key() const {
-        return key_;
-    }
-
-    inline void Get(const value_t &value) {}
-
-    inline void GetAtomic(const value_t &value) {}
-
-protected:
-    Status DeepCopy_Internal(IAsyncContext *&context_copy) {
-        return IAsyncContext::DeepCopy_Internal(*this, context_copy);
-    }
-
-private:
-    Key key_;
-};
-
 /// Class passed to store_t::Upsert().
 class UpsertContext : public IAsyncContext {
 public:
@@ -169,6 +147,34 @@ public:
 
 protected:
     /// The explicit interface requires a DeepCopy_Internal() implementation.
+    Status DeepCopy_Internal(IAsyncContext *&context_copy) {
+        return IAsyncContext::DeepCopy_Internal(*this, context_copy);
+    }
+
+private:
+    Key key_;
+    uint64_t input_;
+};
+
+class DeleteContext : public IAsyncContext {
+public:
+    typedef Key key_t;
+    typedef Value value_t;
+
+    DeleteContext(uint64_t key) : key_{key} {}
+
+    DeleteContext(const DeleteContext &other) : key_{other.key_} {}
+
+    inline const Key &key() const {
+        return key_;
+    }
+
+    /// Non-atomic and atomic Put() methods.
+    inline void Put(value_t &value) {
+        value.value_ = input_;
+    }
+
+protected:
     Status DeepCopy_Internal(IAsyncContext *&context_copy) {
         return IAsyncContext::DeepCopy_Internal(*this, context_copy);
     }
