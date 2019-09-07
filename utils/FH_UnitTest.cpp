@@ -38,11 +38,11 @@ int main(int argc, char **argv) {
         for (uint64_t i = 0; i < DEFAULT_STORE_SIZE; i++) {
             UpsertContext upsertContext{i, i};
             Status uStat = store.Upsert(upsertContext, upsertCallback, 1);
-            cout << "\t" << Utility::retStatus(uStat) << " " << store.Size() << endl;
+            //cout << "\t" << Utility::retStatus(uStat) << " " << store.Size() << endl;
         }
         UpsertContext upsertContext{0, 0};
         Status uStat = store.Upsert(upsertContext, upsertCallback, 1);
-        cout << "\t" << Utility::retStatus(uStat) << " " << store.Size() << endl;
+        cout << "\t" << Utility::retStatus(uStat) << " " << store.Size() << " " << store.entrySize() << endl;
     }
     cout << "Read" << endl;
     {
@@ -52,17 +52,17 @@ int main(int argc, char **argv) {
         ReadContext readContext(1);
         Status rStat = store.Read(readContext, readCallback, 1);
         assert(rStat == Status::Ok);
-        cout << "\t" << Utility::retStatus(rStat) << " " << store.Size() << endl;
+        cout << "\t" << Utility::retStatus(rStat) << " " << store.Size() << " " << store.entrySize() << endl;
     }
     cout << "Delete" << endl;
     {
         auto deleteCallback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<DeleteContext> context(ctxt);
         };
-        DeleteContext deleteContext(0);
+        DeleteContext deleteContext(1);
         Status dStat = store.Delete(deleteContext, deleteCallback, 1);
         assert(dStat == Status::Ok);
-        cout << "\t" << Utility::retStatus(dStat) << " " << store.Size() << endl;
+        cout << "\t" << Utility::retStatus(dStat) << " " << store.Size() << " " << store.entrySize() << endl;
     }
     cout << "Reread" << endl;
     {
@@ -71,8 +71,8 @@ int main(int argc, char **argv) {
         };
         ReadContext readContext(1);
         Status rStat = store.Read(readContext, readCallback, 1);
-        //assert(rStat == Status::NotFound);
-        cout << "\t" << Utility::retStatus(rStat) << " " << store.Size() << endl;
+        assert(rStat == Status::NotFound);
+        cout << "\t" << Utility::retStatus(rStat) << " " << store.Size() << " " << store.entrySize() << endl;
     }
     return 0;
 }

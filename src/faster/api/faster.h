@@ -172,6 +172,10 @@ public:
         return hlog.GetTailAddress().control();
     }
 
+    inline uint64_t entrySize() const {
+        return state_[resize_info_.version].size();
+    }
+
     inline void DumpDistribution() {
         state_[resize_info_.version].DumpDistribution(
                 overflow_buckets_allocator_[resize_info_.version]);
@@ -2836,8 +2840,7 @@ bool FasterKv<K, V, D>::GrowIndex(GrowState::callback_t caller_callback) {
     uint8_t current_version = resize_info_.version;
     assert(current_version == 0 || current_version == 1);
     uint8_t next_version = 1 - current_version;
-    uint64_t num_chunks = std::max(state_[current_version].size() / kGrowHashTableChunkSize,
-                                   (uint64_t) 1);
+    uint64_t num_chunks = std::max(state_[current_version].size() / kGrowHashTableChunkSize, (uint64_t) 1);
     grow_.Initialize(caller_callback, current_version, num_chunks);
     // Initialize the next version of our hash table to be twice the size of the current version.
     state_[next_version].Initialize(state_[current_version].size() * 2, disk.log().alignment());

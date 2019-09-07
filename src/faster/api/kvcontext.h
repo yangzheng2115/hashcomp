@@ -169,6 +169,10 @@ public:
         return key_;
     }
 
+    inline static constexpr uint32_t value_size() {
+        return sizeof(value_t);
+    }
+
     /// Non-atomic and atomic Put() methods.
     inline void Put(value_t &value) {
         value.value_ = input_;
