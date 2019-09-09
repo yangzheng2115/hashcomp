@@ -1,5 +1,4 @@
 #include <iostream>
-#include <sstream>
 #include "tracer.h"
 #include <stdio.h>
 #include <stdlib.h>

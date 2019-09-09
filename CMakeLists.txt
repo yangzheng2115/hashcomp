@@ -115,6 +115,8 @@ endif ()
 option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
+            tests/FH_InsertDeleteUpsertTest.cpp
+            tests/FH_RoundInsertDeleteTest.cpp
             tests/FH_MicroDeleteTest.cpp
             tests/FH_MicroGrowingTest.cpp
             tests/FH_MicroTest.cpp
