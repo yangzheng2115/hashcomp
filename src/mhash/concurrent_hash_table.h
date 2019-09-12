@@ -198,6 +198,7 @@ private:
                             // CAS fails means the atomic ptr just got changed
                             assert(loc_ref_->type_ == node_type::ARRAY_NODE ||
                                    loc_ref_->type_ == node_type::DATA_NODE);
+                            fail=0;
                             continue;
                         }
                     } else {

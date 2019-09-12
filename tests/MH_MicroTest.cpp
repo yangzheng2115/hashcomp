@@ -25,7 +25,7 @@
 #define DEFAULT_STORE_BASE 100000000
 
 #if COUNT_HASH == 1
-#define UNSAFE
+//#define UNSAFE
 #ifdef UNSAFE
 neatlib::ConcurrentHashTable<uint64_t, uint64_t,
         std::hash<uint64_t>, 4, 16,
