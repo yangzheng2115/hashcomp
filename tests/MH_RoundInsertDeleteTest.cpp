@@ -71,7 +71,7 @@ int needHit = 0; // 0: expect = i; 1: expect = total- i; 2: notfound.
 
 void *singleInsert(void *args) {
     for (uint64_t i = 0; i < total_count; i++) {
-       // mhash->Insert(loads[i], loads[i]);
+        // mhash->Insert(loads[i], loads[i]);
         mhash->Insert(i, i); // return what when duplication heappens.
     }
 }
@@ -91,12 +91,11 @@ void *singleUpdate(void *args) {
 void *singleRead(void *args) {
     for (uint64_t i = 0; i < total_count / thread_count; i++) {
         pair<uint64_t, uint64_t> ret = mhash->Get(i);
-        if (needHit==0) {
+        if (needHit == 0) {
             assert(ret.second == i);
-        } else if(needHit==1) {
+        } else if (needHit == 1) {
             assert(ret.second == (total_count - i));
-        }
-        else{
+        } else {
 
         }
     }
@@ -145,8 +144,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter insertion" << " elipsed: "
-             << tracer.getRunTime() << endl;
+        cout << "\tAfter insertion" << " elipsed: " << tracer.getRunTime() << endl;
         tracer.startTime();
         needHit = 0;
         for (int i = 0; i < thread_count; i++) {
@@ -155,8 +153,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter read " << " elipsed: "
-             << tracer.getRunTime() << endl;
+        cout << "\tAfter read " << " elipsed: " << tracer.getRunTime() << endl;
         tracer.startTime();
         for (int i = 0; i < thread_count; i++) {
             pthread_create(&threads[i], nullptr, singleUpdate, nullptr);
@@ -164,8 +161,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter update" << " elipsed: "
-             << tracer.getRunTime() <<endl;
+        cout << "\tAfter update" << " elipsed: " << tracer.getRunTime() << endl;
         tracer.startTime();
         needHit = 1;
         for (int i = 0; i < thread_count; i++) {
@@ -174,8 +170,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter read" << " elipsed: "
-             << tracer.getRunTime() << endl;
+        cout << "\tAfter read" << " elipsed: " << tracer.getRunTime() << endl;
         tracer.startTime();
         for (int i = 0; i < thread_count; i++) {
             pthread_create(&threads[i], nullptr, singleDelete, nullptr);
@@ -183,8 +178,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter deletion" << " elipsed: "
-             << tracer.getRunTime() <<endl;
+        cout << "\tAfter deletion" << " elipsed: " << tracer.getRunTime() << endl;
         tracer.startTime();
         needHit = 2;
         for (int i = 0; i < thread_count; i++) {
@@ -193,8 +187,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < thread_count; i++) {
             pthread_join(threads[i], nullptr);
         }
-        cout << "\tAfter read" << " elipsed: "
-             << tracer.getRunTime() << endl;
+        cout << "\tAfter read" << " elipsed: " << tracer.getRunTime() << endl;
     }
     //delete store;
 }
