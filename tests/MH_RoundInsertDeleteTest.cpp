@@ -14,7 +14,7 @@
 #include "atomic_shared_ptr.h"
 #include "universal_hash_table.h"
 
-#define DEFAULT_STORE_BASE (1LLU << 28)
+#define DEFAULT_STORE_BASE 100000000
 
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
@@ -59,9 +59,9 @@ uint64_t failure = 0;
 
 uint64_t total_count = (1LLU << 20);
 
-uint64_t thread_count = 8;
+uint64_t thread_count = 4;
 
-uint64_t total_round = 8;
+uint64_t total_round = 4;
 
 stringstream *output;
 
@@ -96,7 +96,7 @@ void *singleRead(void *args) {
         } else if (needHit == 1) {
             assert(ret.second == (total_count - i));
         } else {
-
+            assert(ret.second == NULL);
         }
     }
 }
@@ -171,6 +171,7 @@ int main(int argc, char **argv) {
             pthread_join(threads[i], nullptr);
         }
         cout << "\tAfter read" << " elipsed: " << tracer.getRunTime() << endl;
+
         tracer.startTime();
         for (int i = 0; i < thread_count; i++) {
             pthread_create(&threads[i], nullptr, singleDelete, nullptr);

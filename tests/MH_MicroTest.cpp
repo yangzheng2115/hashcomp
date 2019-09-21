@@ -11,7 +11,7 @@
 #include "atomic_shared_ptr.h"
 #include "universal_hash_table.h"
 
-#define DEFAULT_THREAD_NUM (8)
+#define DEFAULT_THREAD_NUM (4)
 #define DEFAULT_KEYS_COUNT (1 << 20)
 #define DEFAULT_KEYS_RANGE (1 << 2)
 
@@ -25,7 +25,7 @@
 #define DEFAULT_STORE_BASE 100000000
 
 #if COUNT_HASH == 1
-//#define UNSAFE
+#define UNSAFE
 #ifdef UNSAFE
 neatlib::ConcurrentHashTable<uint64_t, uint64_t,
         std::hash<uint64_t>, 4, 16,
@@ -98,14 +98,27 @@ struct target *parms;
 void simpleInsert() {
     Tracer tracer;
     tracer.startTime();
+    //  bool flag=true;
     int inserted = 0;
     unordered_set<uint64_t> set;
     for (int i = 0; i < total_count; i++) {
         mhash->Insert(loads[i], loads[i]);
         set.insert(loads[i]);
         inserted++;
+        /*if(flag) {
+            inserted++;
+            cout << i << loads[i] << inserted << endl;
+        }*/
     }
     cout << inserted << " " << tracer.getRunTime() << endl;
+    inserted=0;
+    for (int i = 0; i < total_count; i++) {
+        mhash->Update(loads[i], loads[i]);
+        set.insert(loads[i]);
+        //if(flag)
+        inserted++;
+    }
+    cout<<inserted<<endl;
 }
 
 void *insertWorker(void *args) {
@@ -213,6 +226,7 @@ void multiWorkers() {
 }
 
 int main(int argc, char **argv) {
+
     if (argc > 3) {
         thread_number = std::atol(argv[1]);
         key_range = std::atol(argv[2]);
@@ -250,6 +264,7 @@ int main(int argc, char **argv) {
          << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
     finish();
-    //delete mhash;
+    delete mhash;
+
     return 0;
 }

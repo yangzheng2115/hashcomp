@@ -321,8 +321,10 @@ namespace neatlib {
 
         std::pair<const Key, const T> Get(const Key &key) {
             locator locator_(*this, key);
+            const std::pair<const Key, const T> d;
             if (locator_.loc_ref_ == nullptr)
                 throw std::out_of_range("No Element Found");
+            // return d;
             return locator_.value();
         }
 
