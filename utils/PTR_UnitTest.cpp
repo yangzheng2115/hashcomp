@@ -24,6 +24,8 @@ constexpr long iteration = (1 << 30);
 struct node {
     uint64_t element = 0;
 public:
+    node() : element(0) {}
+
     node(uint64_t e) : element(e) {}
 
     /*node &operator=(node &n) {
@@ -141,12 +143,68 @@ void uniquePtrTests() {
          << tracer.getRunTime() << endl;
 }
 
+struct node *wallclocks;
+
+volatile atomic<node *> *pwcs;
+
+void uniquePtrPWorker(int tid) {
+    Tracer tracer;
+    tracer.startTime();
+
+    register int yc = 1;
+    for (long r = 0; r < (iteration / pdegree); r++) {
+        register node *dummy = nullptr;
+
+        register node *pcw = wallclocks + tid;
+        while (!pwcs[tid].compare_exchange_strong(pcw, dummy)) {
+            for (int c = 0; c < yc; c++) this_thread::yield();
+            yc *= 2;
+            pcw = wallclocks + tid;
+        }
+        if (yc >= 2) yc /= 2;
+
+        for (int i = 0; i < threadOprs; i++) {
+            pcw->element++;
+        }
+        pwcs[tid].store(pcw);
+    }
+    output[tid] << tid << ":" << tracer.getRunTime() << endl;
+}
+
+void uniquePtrPTests() {
+    wallclocks = new node[pdegree];
+    pwcs = new atomic<node *>[pdegree];
+    for (int i = 0; i < pdegree; i++) {
+        pwcs[i].store(wallclocks + i);
+    }
+    delete[] output;
+    output = new stringstream[pdegree];
+    std::vector<thread> workers;
+    Tracer tracer;
+    cout << "Intend: " << iteration * threadOprs << " " << pdegree << endl;
+    tracer.startTime();
+    for (int t = 0; t < pdegree; t++) {
+        workers.push_back(std::thread(uniquePtrPWorker, t));
+    }
+    long ec = 0;
+    for (int t = 0; t < pdegree; t++) {
+        workers[t].join();
+        ec += wallclocks[t].element;
+        cout << "\t" << output[t].str();
+    }
+
+    cout << "Multi-thread: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    delete[] pwcs;
+    delete[] wallclocks;
+}
+
 int main(int argc, char **argv) {
     if (argc > 1) {
         pdegree = std::atoi(argv[1]);
     }
     output = new stringstream[pdegree];
     uniquePtrTests();
+    uniquePtrPTests();
     delete[] output;
     return 0;
 }
