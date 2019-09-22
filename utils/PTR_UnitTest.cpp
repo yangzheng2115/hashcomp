@@ -17,6 +17,10 @@ constexpr chrono::duration<long long int> sleepSeconds = chrono::seconds(1);
 
 int pdegree = 4;
 
+int pseudo_local = 0;
+
+int pseudo_step = 128 / (sizeof(void *));
+
 constexpr int threadOprs = (1 << 2);
 
 constexpr long iteration = (1 << 30);
@@ -194,34 +198,49 @@ void uniquePtrPWorker(int tid) {
     Tracer tracer;
     tracer.startTime();
     atomic<node *> pc(&wallclocks[tid]);
+    int idx = tid * pseudo_step;
 
     int yc = 1;
     for (long r = 0; r < (iteration / pdegree); r++) {
         node *dummy = nullptr;
+        //if (r % 10000000 == 0) cout << tid << ":" << r << endl;
+        if (pseudo_local == 0) {
+            node *pcw = wallclocks + tid;
+            while (!pwcs[idx].compare_exchange_strong(pcw, dummy)) {
+                for (int c = 0; c < yc; c++) this_thread::yield();
+                yc *= 2;
+                pcw = wallclocks + tid;
+            }
+            if (yc >= 2) yc /= 2;
 
-        node *pcw = wallclocks + tid;
-        while (!/*pwcs[tid]*/pc.compare_exchange_strong(pcw, dummy)) {
-            for (int c = 0; c < yc; c++) this_thread::yield();
-            yc *= 2;
-            pcw = wallclocks + tid;
-        }
-        if (yc >= 2) yc /= 2;
+            for (int i = 0; i < threadOprs; i++) {
+                pcw->element++;
+            }
+            pwcs[idx].store(pcw);
+        } else {
+            node *pcw = wallclocks + tid;
+            while (!pc.compare_exchange_strong(pcw, dummy)) {
+                for (int c = 0; c < yc; c++) this_thread::yield();
+                yc *= 2;
+                pcw = wallclocks + tid;
+            }
+            if (yc >= 2) yc /= 2;
 
-        for (int i = 0; i < threadOprs; i++) {
-            pcw->element++;
+            for (int i = 0; i < threadOprs; i++) {
+                pcw->element++;
+            }
+            pc.store(pcw);
         }
-        /*pwcs[tid]*/pc.store(pcw);
-        //if (r % 1000000 == 0) cout << tid << ":" << r << endl;
     }
     output[tid] << tid << ":" << tracer.getRunTime() << endl;
 }
 
 void uniquePtrPTests() {
     wallclocks = new node[pdegree];
-    /*pwcs = new atomic<node *>[pdegree]alignas(128);
-    for (int t = 0; t < pdegree; t++) {
-        pwcs[t] = wallclocks + t;
-    }*/
+    pwcs = new atomic<node *>[pdegree * pseudo_step];
+    for (int t = 0; t < pdegree * pseudo_step; t += pseudo_step) {
+        pwcs[t] = wallclocks + t / pseudo_step;
+    }
     delete[] output;
     output = new stringstream[pdegree];
     std::vector<thread> workers;
@@ -240,15 +259,16 @@ void uniquePtrPTests() {
 
     cout << "Multi-thread: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     delete[] wallclocks;
-    /*delete[] pwcs;*/
+    delete[] pwcs;
 }
 
 int main(int argc, char **argv) {
-    if (argc > 1) {
+    if (argc > 2) {
         pdegree = std::atoi(argv[1]);
+        pseudo_local = std::atoi(argv[2]);
     }
     output = new stringstream[pdegree];
-    uniquePtrTests();
+    //uniquePtrTests();
     uniquePtrPTests();
     delete[] output;
     return 0;
