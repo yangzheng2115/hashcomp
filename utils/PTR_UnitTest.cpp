@@ -145,7 +145,7 @@ void uniquePtrTests() {
 
 struct node *wallclocks;
 
-template<class _Tp>
+/*template<class _Tp>
 struct alignas(128) alignasatomic : public atomic<_Tp> {
 public:
     alignasatomic() {};
@@ -186,7 +186,7 @@ public:
         this->store(*n);
         return this;
     }
-};
+};*/
 
 alignas(128)atomic<node *> *pwcs;
 
@@ -218,10 +218,10 @@ void uniquePtrPWorker(int tid) {
 
 void uniquePtrPTests() {
     wallclocks = new node[pdegree];
-    pwcs = new atomic<node *>[pdegree]alignas(128);
+    /*pwcs = new atomic<node *>[pdegree]alignas(128);
     for (int t = 0; t < pdegree; t++) {
         pwcs[t] = wallclocks + t;
-    }
+    }*/
     delete[] output;
     output = new stringstream[pdegree];
     std::vector<thread> workers;
@@ -240,7 +240,7 @@ void uniquePtrPTests() {
 
     cout << "Multi-thread: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     delete[] wallclocks;
-    delete[] pwcs;
+    /*delete[] pwcs;*/
 }
 
 int main(int argc, char **argv) {
