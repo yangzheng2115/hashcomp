@@ -75,9 +75,11 @@ void uniquePtrWorker(int tid) {
             pcw = pwc;
         } while (pcw == nullptr || !pwc.compare_exchange_weak(pcw, dummy, memory_order_release));*/
 
+        register int yc = 1;
         register node *pcw = &wallclock;
         while (!pwc.compare_exchange_strong(pcw, dummy)) {
-            this_thread::yield();
+            for (int c = 0; c < yc; c++) this_thread::yield();
+            yc *= 2;
             pcw = &wallclock;
         }
 
