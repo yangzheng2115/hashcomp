@@ -7,7 +7,7 @@
 #include "faster.h"
 #include "kvcontext.h"
 
-#define DEFAULT_STORE_BASE (1LLU << 28)
+#define DEFAULT_STORE_BASE (1LLU << 27)
 
 using namespace FASTER::api;
 
