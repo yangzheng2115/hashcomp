@@ -8,7 +8,7 @@
 #include <memory>
 #include <thread>
 #include <vector>
-#import "tracer.h"
+#include "tracer.h"
 
 using namespace std;
 
@@ -70,10 +70,16 @@ void uniquePtrWorker(int tid) {
     //*/
     for (long r = 0; r < (iteration / pdegree); r++) {
         register node *dummy = nullptr;
-        register node *pcw = nullptr;
+        /*register node *pcw = nullptr;
         do {
             pcw = pwc;
-        } while (pcw == nullptr || !pwc.compare_exchange_weak(pcw, dummy, memory_order_release));
+        } while (pcw == nullptr || !pwc.compare_exchange_weak(pcw, dummy, memory_order_release));*/
+
+        register node *pcw = &wallclock;
+        while (!pwc.compare_exchange_strong(pcw, dummy)) {
+            this_thread::yield();
+            pcw = &wallclock;
+        }
 
         //iter:
         //unique_ptr<node> pcw = move(pwc);
