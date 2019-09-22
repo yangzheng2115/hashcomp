@@ -68,6 +68,8 @@ void uniquePtrWorker(int tid) {
 
     ////auto pcw = static_cast<node *>(pwc.get());
     //*/
+
+    register int yc = 1;
     for (long r = 0; r < (iteration / pdegree); r++) {
         register node *dummy = nullptr;
         /*register node *pcw = nullptr;
@@ -75,13 +77,13 @@ void uniquePtrWorker(int tid) {
             pcw = pwc;
         } while (pcw == nullptr || !pwc.compare_exchange_weak(pcw, dummy, memory_order_release));*/
 
-        register int yc = 1;
         register node *pcw = &wallclock;
         while (!pwc.compare_exchange_strong(pcw, dummy)) {
             for (int c = 0; c < yc; c++) this_thread::yield();
             yc *= 2;
             pcw = &wallclock;
         }
+        if (yc >= 2) yc /= 2;
 
         //iter:
         //unique_ptr<node> pcw = move(pwc);
