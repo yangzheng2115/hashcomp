@@ -14,7 +14,7 @@ using namespace std;
 //constexpr chrono::nanoseconds sleepNano = chrono::nanoseconds(1000);
 constexpr chrono::duration<long long int> sleepSeconds = chrono::seconds(1);
 
-constexpr int pdegree = 4;
+int pdegree = 4;
 
 constexpr int threadOprs = (1 << 2);
 
@@ -65,14 +65,16 @@ void uniquePtrWorker(int tid) {
     ////auto pcw = static_cast<node *>(pwc.get());
     //*/
     for (long r = 0; r < (iteration / pdegree); r++) {
+        node *dummy = nullptr;
         node *pcw = nullptr;
-        iter:
+        do {
+            pcw = pwc.load();
+        } while (pcw == nullptr || !pwc.compare_exchange_strong(pcw, dummy));
+
+        //iter:
         //unique_ptr<node> pcw = move(pwc);
         //auto ncw = static_cast<node *>(pcw.get());
-        pwc.compare_exchange_strong(pcw, pwc);
-        if (pcw == nullptr) {
-            goto iter;
-        }
+        //if (pcw == nullptr) goto iter;
         for (int i = 0; i < threadOprs; i++) {
             /*//pwc.operator->()->element++;
             //ncw->element++;
@@ -86,6 +88,7 @@ void uniquePtrWorker(int tid) {
                 //this_thread::sleep_for(sleepSeconds);
                 goto iter;
             }*/
+            //if (i % 1000000) cout << tid << ":" << i << endl;
 
             /*//pcw->element++;
              //pwc.operator*().element++;
@@ -96,6 +99,7 @@ void uniquePtrWorker(int tid) {
             //cout << tid << ":" /**pwc*/ << ncw->element << endl;// ":" << pwc << endl;
             //this_thread::sleep_for(sleepSeconds);
         }
+        pwc.store(pcw);
         /*pwc = move(pcw);*/
     }
 }
@@ -103,7 +107,7 @@ void uniquePtrWorker(int tid) {
 void uniquePtrTests() {
     std::vector<thread> workers;
     Tracer tracer;
-    cout << "Intend: " << iteration * threadOprs << endl;
+    cout << "Intend: " << iteration * threadOprs << " " << pdegree << endl;
     tracer.startTime();
     for (int t = 0; t < pdegree; t++) {
         workers.push_back(std::thread(uniquePtrWorker, t));
@@ -122,6 +126,9 @@ void uniquePtrTests() {
 }
 
 int main(int argc, char **argv) {
+    if (argc > 1) {
+        pdegree = std::atoi(argv[1]);
+    }
     uniquePtrTests();
     return 0;
 }
