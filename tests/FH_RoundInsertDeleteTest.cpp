@@ -45,23 +45,29 @@ void *singleInsert(void *args) {
 void *singleDelete(void *args) {
     for (uint64_t i = 0; i < total_count / thread_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
-            CallbackContext<DeleteContext> context{ctxt};
+            CallbackContext <DeleteContext> context{ctxt};
         };
+        Status stat;
         DeleteContext context{i};
-        Status stat = store->Delete(context, callback, 1);
+        do {
+            stat = store->Delete(context, callback, 1);
+        } while (stat != Status::Ok);
     }
 }
 
 void *singleRead(void *args) {
     for (uint64_t i = 0; i < total_count / thread_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
-            CallbackContext<ReadContext> context{ctxt};
+            CallbackContext <ReadContext> context{ctxt};
         };
         ReadContext context(i);
         Status stat = store->Read(context, callback, 1);
         if (needHit) {
             assert(stat == Status::Ok);
         } else {
+            if (stat != Status::NotFound) {
+                cout << i << ":" << Utility::retStatus(stat) << "<->" << Utility::retStatus(Status::NotFound) << endl;
+            }
             assert(stat == Status::NotFound);
         }
     }

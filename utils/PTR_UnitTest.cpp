@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
         pseudo_local = std::atoi(argv[2]);
     }
     output = new stringstream[pdegree];
-    //uniquePtrTests();
+    uniquePtrTests();
     uniquePtrPTests();
     delete[] output;
     return 0;
