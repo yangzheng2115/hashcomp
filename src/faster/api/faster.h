@@ -1265,6 +1265,8 @@ inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
     if (address >= read_only_address) {
         if (atomic_entry->load().address() == address) {
             atomic_entry->store(HashBucketEntry::kInvalidEntry);
+        } else {
+            return InternalDelete(pending_context);
         }
         return OperationStatus::SUCCESS;
     }
