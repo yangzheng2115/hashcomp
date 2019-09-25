@@ -145,7 +145,7 @@ void *dummyInsert(void *args) {
         };
         UpsertContext context{i, i};
         Status stat = store->Upsert(context, callback, 1);
-        cout << store->Size() << endl;
+        //cout << store->Size() << endl;
     }
 }
 
@@ -156,7 +156,7 @@ void *dummyDelete(void *args) {
         };
         DeleteContext context{i};
         Status stat = store->Delete(context, callback, 1);
-        cout << store->Size() << endl;
+        //cout << store->Size() << endl;
     }
 }
 
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
     tracer.startTime();
     store = new store_t{init_size, 17179869184, "storage"};
     cout << "New store: " << tracer.getRunTime() << endl;
-    //dummyOperations();
-    steppingOperations();
+    dummyOperations();
+    //steppingOperations();
     delete store;
 }

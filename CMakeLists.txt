@@ -166,7 +166,8 @@ option(WITH_STRUCT "build with structs" ON)
 if (WITH_STRUCT)
     set(STRUCT_TEST
             utils/Struct_UnionTest.cpp
-            utils/PTR_UnitTest.cpp)
+            utils/PTR_UnitTest.cpp
+            utils/Load_UnitTest.cpp)
 endif ()
 
 find_package(Threads)
