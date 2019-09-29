@@ -143,7 +143,7 @@ void uniquePtrTests() {
         n = static_cast<node *>(pwc.get());
     }*/
 
-    cout << "Multi-thread pdegree: " << pdegree << "<->" << wallclock.element << "<>" /*<< n->element*/ << ":"
+    cout << "Multi-thread naiveLock: " << pdegree << "<->" << wallclock.element << "<>" /*<< n->element*/ << ":"
          << tracer.getRunTime() << endl;
 }
 
@@ -257,7 +257,53 @@ void uniquePtrPTests() {
         cout << "\t" << output[t].str();
     }
 
-    cout << "Multi-thread: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    cout << "Multi-thread steppingLock: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    delete[] wallclocks;
+    delete[] pwcs;
+}
+
+
+void atomicAddPWorker(int tid) {
+    Tracer tracer;
+    tracer.startTime();
+    atomic<node *> pc(&wallclocks[tid]);
+    int idx = tid * pseudo_step;
+
+    int yc = 1;
+    for (long r = 0; r < (iteration / pdegree); r++) {
+        //if (r % 10000000 == 0) cout << tid << ":" << r << endl;
+        if (pseudo_local == 0) {
+            pwcs[idx].fetch_add(1);
+        } else {
+            pc.fetch_add(1);
+        }
+    }
+    output[tid] << tid << ":" << tracer.getRunTime() << endl;
+}
+
+void atomicAddPTests() {
+    wallclocks = new node[pdegree];
+    pwcs = new atomic<node *>[pdegree * pseudo_step];
+    for (int t = 0; t < pdegree * pseudo_step; t += pseudo_step) {
+        pwcs[t] = wallclocks + t / pseudo_step;
+    }
+    delete[] output;
+    output = new stringstream[pdegree];
+    std::vector<thread> workers;
+    Tracer tracer;
+    cout << "Intend: " << iteration * threadOprs << " " << pdegree << endl;
+    tracer.startTime();
+    for (int t = 0; t < pdegree; t++) {
+        workers.push_back(std::thread(atomicAddPWorker, t));
+    }
+    long ec = 0;
+    for (int t = 0; t < pdegree; t++) {
+        workers[t].join();
+        ec += wallclocks[t].element;
+        cout << "\t" << output[t].str();
+    }
+
+    cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     delete[] wallclocks;
     delete[] pwcs;
 }
@@ -270,6 +316,7 @@ int main(int argc, char **argv) {
     output = new stringstream[pdegree];
     uniquePtrTests();
     uniquePtrPTests();
+    atomicAddPTests();
     delete[] output;
     return 0;
 }
