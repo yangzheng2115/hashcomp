@@ -10,6 +10,13 @@
 #include <vector>
 #include "tracer.h"
 
+#define USE_C_STYLE_ATOMIC 1
+#if USE_C_STYLE_ATOMIC
+
+#include <stdlib.h>
+
+#endif
+
 using namespace std;
 
 //constexpr chrono::nanoseconds sleepNano = chrono::nanoseconds(1000);
@@ -264,6 +271,7 @@ void uniquePtrPTests() {
 
 alignas(128)atomic<uint64_t> *pwa;
 atomic<uint64_t> pc(0);
+uint64_t pca = 0;
 
 void atomicAddPWorker(int tid) {
     Tracer tracer;
@@ -275,7 +283,12 @@ void atomicAddPWorker(int tid) {
         if (pseudo_local != 0) {
             pwa[idx].fetch_add(1);
         } else {
+#if USE_C_STYLE_ATOMIC
+            //__atomic_fetch_add(&pca, 1, __ATOMIC_SEQ_CST);
+            __sync_fetch_and_add(&pca, 1);
+#else
             pc.fetch_add(1);
+#endif
         }
     }
     output[tid] << tid << ":" << tracer.getRunTime() << endl;
@@ -304,11 +317,18 @@ void atomicAddPTests() {
         cout << "\t" << output[t].str();
     }
 
+#if USE_C_STYLE_ATOMIC
+    if (pseudo_local != 0)
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    else
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << pca << "<>" << ":" << tracer.getRunTime() << endl;
+#else
     if (pseudo_local != 0)
         cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     else
         cout << "Multi-thread atomicAdd: " << pdegree << "<->" << pc.load() << "<>" << ":" << tracer.getRunTime()
              << endl;
+#endif
     delete[] wallclocks;
     delete[] pwa;
 }
