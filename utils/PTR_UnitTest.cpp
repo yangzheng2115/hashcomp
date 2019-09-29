@@ -10,10 +10,35 @@
 #include <vector>
 #include "tracer.h"
 
-#define USE_C_STYLE_ATOMIC 1
-#if USE_C_STYLE_ATOMIC
+#define ATOMIC_STYLE 0
+#if ATOMIC_STYLE == 1
 
 #include <stdlib.h>
+
+#elif ATOMIC_STYLE == 2 // ATOMIC_SPIN_LOCK
+
+class spinlock {
+private:
+    atomic_flag flag;
+
+public:
+    spinlock() : flag(ATOMIC_FLAG_INIT) {}
+
+    void lock() {
+        while (flag.test_and_set(memory_order_acquire)) {}
+    }
+
+    bool try_lock() {
+        return !flag.test_and_set(memory_order_acquire);
+    }
+
+    void unlock() {
+        flag.clear();
+    }
+};
+#elif ATOMIC_STYLE == 3
+
+#include <mutex>
 
 #endif
 
@@ -270,7 +295,15 @@ void uniquePtrPTests() {
 }
 
 alignas(128)atomic<uint64_t> *pwa;
+
 atomic<uint64_t> pc(0);
+
+#if ATOMIC_STYLE == 2
+spinlock slock;
+#elif ATOMIC_STYLE == 3
+mutex mlock;
+#endif
+
 uint64_t pca = 0;
 
 void atomicAddPWorker(int tid) {
@@ -278,16 +311,26 @@ void atomicAddPWorker(int tid) {
     tracer.startTime();
     int idx = tid * pseudo_step;
 
+#pragma omp parallel for schedule(static, 1)
     for (long r = 0; r < (iteration / pdegree); r++) {
         //if (r % 10000000 == 0) cout << tid << ":" << r << endl;
         if (pseudo_local != 0) {
             pwa[idx].fetch_add(1);
         } else {
-#if USE_C_STYLE_ATOMIC
+#if ATOMIC_STYLE == 1
             //__atomic_fetch_add(&pca, 1, __ATOMIC_SEQ_CST);
             __sync_fetch_and_add(&pca, 1);
+#elif ATOMIC_STYLE == 2
+            slock.lock();
+            pca++;
+            slock.unlock();
+#elif ATOMIC_STYLE == 3
+            unique_lock<mutex> lock(mlock);
+            //mlock.lock();
+            pca++;
+            //mlock.unlock();
 #else
-            pc.fetch_add(1);
+            pc.fetch_add(1, memory_order_acquire);
 #endif
         }
     }
@@ -317,7 +360,7 @@ void atomicAddPTests() {
         cout << "\t" << output[t].str();
     }
 
-#if USE_C_STYLE_ATOMIC
+#if ATOMIC_STYLE != 0
     if (pseudo_local != 0)
         cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     else
