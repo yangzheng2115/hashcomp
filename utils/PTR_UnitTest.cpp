@@ -262,18 +262,18 @@ void uniquePtrPTests() {
     delete[] pwcs;
 }
 
+alignas(128)atomic<uint64_t> *pwa;
+atomic<uint64_t> pc(0);
 
 void atomicAddPWorker(int tid) {
     Tracer tracer;
     tracer.startTime();
-    atomic<node *> pc(&wallclocks[tid]);
     int idx = tid * pseudo_step;
 
-    int yc = 1;
     for (long r = 0; r < (iteration / pdegree); r++) {
         //if (r % 10000000 == 0) cout << tid << ":" << r << endl;
-        if (pseudo_local == 0) {
-            pwcs[idx].fetch_add(1);
+        if (pseudo_local != 0) {
+            pwa[idx].fetch_add(1);
         } else {
             pc.fetch_add(1);
         }
@@ -283,9 +283,9 @@ void atomicAddPWorker(int tid) {
 
 void atomicAddPTests() {
     wallclocks = new node[pdegree];
-    pwcs = new atomic<node *>[pdegree * pseudo_step];
+    pwa = new atomic<uint64_t>[pdegree * pseudo_step];
     for (int t = 0; t < pdegree * pseudo_step; t += pseudo_step) {
-        pwcs[t] = wallclocks + t / pseudo_step;
+        pwa[t] = wallclocks[t / pseudo_step].element;
     }
     delete[] output;
     output = new stringstream[pdegree];
@@ -299,13 +299,18 @@ void atomicAddPTests() {
     long ec = 0;
     for (int t = 0; t < pdegree; t++) {
         workers[t].join();
-        ec += wallclocks[t].element;
+        //ec += wallclocks[t].element;
+        ec += pwa[t * pseudo_step].load();
         cout << "\t" << output[t].str();
     }
 
-    cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    if (pseudo_local != 0)
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    else
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << pc.load() << "<>" << ":" << tracer.getRunTime()
+             << endl;
     delete[] wallclocks;
-    delete[] pwcs;
+    delete[] pwa;
 }
 
 int main(int argc, char **argv) {
