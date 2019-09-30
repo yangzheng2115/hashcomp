@@ -418,9 +418,7 @@ public:
 
 /// Per-thread execution context. (Just the stuff that's checkpointed to disk.)
 struct PersistentExecContext {
-    PersistentExecContext()
-            : serial_num{0}, version{0}, guid{} {
-    }
+    PersistentExecContext() : serial_num{0}, version{0}, guid{} {}
 
     void Initialize(uint32_t version_, const Guid &guid_, uint64_t serial_num_) {
         serial_num = serial_num_;
@@ -439,8 +437,7 @@ static_assert(sizeof(PersistentExecContext) == 32, "sizeof(PersistentExecContext
 /// Per-thread execution context. (Also includes state kept in-memory-only.)
 struct ExecutionContext : public PersistentExecContext {
     /// Default constructor.
-    ExecutionContext() : phase{Phase::INVALID}, io_id{0} {
-    }
+    ExecutionContext() : phase{Phase::INVALID}, io_id{0} {}
 
     void Initialize(Phase phase_, uint32_t version_, const Guid &guid_, uint64_t serial_num_) {
         assert(retry_requests.empty());

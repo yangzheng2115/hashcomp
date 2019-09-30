@@ -121,6 +121,7 @@ if (WITH_FH_TESTS)
             tests/FH_MicroGrowingTest.cpp
             tests/FH_MicroTest.cpp
             tests/FH_YCSB.cpp
+            tests/FH_StableRUTest.cpp
             utils/FH_UnitTest.cpp
             utils/EP_UnitTest.cpp)
 endif ()
