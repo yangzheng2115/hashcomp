@@ -119,6 +119,7 @@ if (WITH_FH_TESTS)
             tests/FH_RoundInsertDeleteTest.cpp
             tests/FH_MicroDeleteTest.cpp
             tests/FH_MicroGrowingTest.cpp
+            tests/FH_MicroCTest.cpp
             tests/FH_MicroTest.cpp
             tests/FH_YCSB.cpp
             tests/FH_StableRUTest.cpp
