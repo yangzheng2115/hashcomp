@@ -4,11 +4,21 @@
 
 #include <iostream>
 #include <sstream>
+#include <random>
 #include "tracer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "faster.h"
+
+#define FIXED_VALUE 0
+
+#if FIXED_VALUE == 1
 #include "ckvcontext.h"
+#else
+
+#include <cvkvcontext.h>
+
+#endif
 
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
@@ -66,6 +76,9 @@ pthread_t *workers;
 
 struct target *parms;
 
+std::default_random_engine engine(static_cast<int>(chrono::steady_clock::now().time_since_epoch().count()));
+std::uniform_int_distribution<size_t> dis(0, 127);
+
 void simpleInsert() {
     Tracer tracer;
     tracer.startTime();
@@ -74,7 +87,11 @@ void simpleInsert() {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if FIXED_VALUE == 1
         UpsertContext context{loads[i]};
+#else
+        UpsertContext context(loads[i], dis(engine));
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -88,7 +105,11 @@ void *insertWorker(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if FIXED_VALUE == 1
         UpsertContext context{loads[i]};
+#else
+        UpsertContext context(loads[i], dis(engine));
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -119,7 +140,11 @@ void *measureWorker(void *args) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
+#if FIXED_VALUE == 1
             UpsertContext context{loads[i]};
+#else
+            UpsertContext context(loads[i], dis(engine));
+#endif
             Status stat = store.Upsert(context, callback, 1);
             if (stat == Status::NotFound)
                 fail++;
