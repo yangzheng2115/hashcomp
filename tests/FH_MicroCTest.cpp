@@ -18,6 +18,7 @@
 
 #include <cvkvcontext.h>
 
+uint32_t *lengths;
 #endif
 
 #define DEFAULT_THREAD_NUM (8)
@@ -90,7 +91,7 @@ void simpleInsert() {
 #if FIXED_VALUE == 1
         UpsertContext context{loads[i]};
 #else
-        UpsertContext context(loads[i], dis(engine));
+        UpsertContext context(loads[i], lengths[i]);
 #endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
@@ -108,7 +109,7 @@ void *insertWorker(void *args) {
 #if FIXED_VALUE == 1
         UpsertContext context{loads[i]};
 #else
-        UpsertContext context(loads[i], dis(engine));
+        UpsertContext context(loads[i], lengths[i]);
 #endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
@@ -143,7 +144,7 @@ void *measureWorker(void *args) {
 #if FIXED_VALUE == 1
             UpsertContext context{loads[i]};
 #else
-            UpsertContext context(loads[i], dis(engine));
+            UpsertContext context(loads[i], lengths[i]);
 #endif
             Status stat = store.Upsert(context, callback, 1);
             if (stat == Status::NotFound)
@@ -162,6 +163,12 @@ void *measureWorker(void *args) {
 }
 
 void prepare() {
+#if FIXED_VALUE == 0
+    lengths = new uint32_t[total_count];
+    for (int i = 0; i < total_count; i++) {
+        lengths[i] = dis(engine);
+    }
+#endif
     cout << "prepare" << endl;
     workers = new pthread_t[thread_number];
     parms = new struct target[thread_number];
@@ -186,6 +193,9 @@ void finish() {
     delete[] parms;
     delete[] workers;
     delete[] output;
+#if FIXED_VALUE == 0
+    delete[] lengths;
+#endif
 }
 
 void multiWorkers() {
