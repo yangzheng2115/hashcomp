@@ -14,9 +14,7 @@ namespace api {
 
 class Key {
 public:
-    Key(uint32_t key)
-            : key_{key} {
-    }
+    Key(uint32_t key) : key_{key} {}
 
     inline static constexpr uint32_t size() {
         return static_cast<uint32_t>(sizeof(Key));
@@ -46,13 +44,9 @@ class ReadContext;
 
 class GenLock {
 public:
-    GenLock()
-            : control_{0} {
-    }
+    GenLock() : control_{0} {}
 
-    GenLock(uint64_t control)
-            : control_{control} {
-    }
+    GenLock(uint64_t control) : control_{control} {}
 
     inline GenLock &operator=(const GenLock &other) {
         control_ = other.control_;
@@ -73,13 +67,9 @@ static_assert(sizeof(GenLock) == 8, "sizeof(GenLock) != 8");
 
 class AtomicGenLock {
 public:
-    AtomicGenLock()
-            : control_{0} {
-    }
+    AtomicGenLock() : control_{0} {}
 
-    AtomicGenLock(uint64_t control)
-            : control_{control} {
-    }
+    AtomicGenLock(uint64_t control) : control_{control} {}
 
     inline GenLock load() const {
         return GenLock{control_.load()};
@@ -126,9 +116,7 @@ static_assert(sizeof(AtomicGenLock) == 8, "sizeof(AtomicGenLock) != 8");
 
 class Value {
 public:
-    Value()
-            : gen_lock_{0}, size_{0}, length_{0} {
-    }
+    Value() : gen_lock_{0}, size_{0}, length_{0} {}
 
     inline uint32_t size() const {
         return size_;
@@ -157,14 +145,10 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    UpsertContext(uint32_t key, uint32_t length)
-            : key_{key}, length_{length} {
-    }
+    UpsertContext(uint32_t key, uint32_t length) : key_{key}, length_{length} {}
 
     /// Copy (and deep-copy) constructor.
-    UpsertContext(const UpsertContext &other)
-            : key_{other.key_}, length_{other.length_} {
-    }
+    UpsertContext(const UpsertContext &other) : key_{other.key_}, length_{other.length_} {}
 
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {
@@ -220,14 +204,10 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    ReadContext(uint32_t key)
-            : key_{key}, output_length{0} {
-    }
+    ReadContext(uint32_t key) : key_{key}, output_length{0} {}
 
     /// Copy (and deep-copy) constructor.
-    ReadContext(const ReadContext &other)
-            : key_{other.key_}, output_length{0} {
-    }
+    ReadContext(const ReadContext &other) : key_{other.key_}, output_length{0} {}
 
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {

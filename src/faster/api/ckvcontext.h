@@ -14,8 +14,7 @@ namespace api {
 
 class Key {
 public:
-    Key(uint32_t key)
-            : key_{key} {
+    Key(uint32_t key) : key_{key} {
     }
 
     inline static constexpr uint32_t size() {
@@ -46,9 +45,7 @@ class ReadContext;
 
 class alignas(16) Value {
 public:
-    Value()
-            : length_{0}, value_{0} {
-    }
+    Value() : length_{0}, value_{0} {}
 
     inline static constexpr uint32_t size() {
         return static_cast<uint32_t>(sizeof(Value));
@@ -68,14 +65,10 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    UpsertContext(uint32_t key)
-            : key_{key} {
-    }
+    UpsertContext(uint32_t key) : key_{key} {}
 
     /// Copy (and deep-copy) constructor.
-    UpsertContext(const UpsertContext &other)
-            : key_{other.key_} {
-    }
+    UpsertContext(const UpsertContext &other) : key_{other.key_} {}
 
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {
@@ -125,14 +118,10 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    ReadContext(uint32_t key)
-            : key_{key} {
-    }
+    ReadContext(uint32_t key) : key_{key} {}
 
     /// Copy (and deep-copy) constructor.
-    ReadContext(const ReadContext &other)
-            : key_{other.key_} {
-    }
+    ReadContext(const ReadContext &other) : key_{other.key_} {}
 
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {
