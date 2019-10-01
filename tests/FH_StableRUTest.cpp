@@ -36,6 +36,9 @@ uint32_t *loads;
 
 uint32_t *loads;
 uint32_t *lengths;
+
+std::default_random_engine engine(static_cast<int>(chrono::steady_clock::now().time_since_epoch().count()));
+std::uniform_int_distribution<size_t> dis(2, 127);
 #endif
 
 using namespace FASTER::api;
@@ -175,7 +178,7 @@ void *measureWorker(void *args) {
 }
 
 void prepare() {
-#if FIXED_VALUE == 2
+#if CONTEXT_TYPE == 2
     lengths = new uint32_t[total_count];
     for (int i = 0; i < total_count; i++) {
         lengths[i] = dis(engine);
