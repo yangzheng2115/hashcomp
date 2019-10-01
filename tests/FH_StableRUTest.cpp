@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "faster.h"
-#include "kvcontext.h"
 
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
@@ -17,6 +16,27 @@
 #define DEFAULT_STR_LENGTH 256
 
 #define DEFAULT_STORE_BASE 100000000LLU
+
+#define CONTEXT_TYPE 2 // 0: naive; 1: ckvcontext; 2: cvkvcontext
+#if CONTEXT_TYPE == 0
+
+#include "kvcontext.h"
+
+uint64_t *loads;
+
+#elif CONTEXT_TYPE == 1
+
+#include "ckvcontext.h"
+
+uint32_t *loads;
+
+#elif CONTEXT_TYPE == 2
+
+#include "cvkvcontext.h"
+
+uint32_t *loads;
+uint32_t *lengths;
+#endif
 
 using namespace FASTER::api;
 
@@ -37,8 +57,6 @@ uint64_t timer_range = default_timer_range;
 size_t init_size = next_power_of_two(DEFAULT_STORE_BASE / 2);
 
 store_t store{init_size, 17179869184, "storage"};
-
-uint64_t *loads;
 
 long total_time;
 
@@ -76,7 +94,13 @@ void simpleInsert() {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 1
+        UpsertContext context{loads[i]};
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(loads[i], lengths[i]);
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -90,7 +114,13 @@ void *insertWorker(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 1
+        UpsertContext context{loads[i]};
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(loads[i], lengths[i]);
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -121,7 +151,13 @@ void *measureWorker(void *args) {
                 auto callback = [](IAsyncContext *ctxt, Status result) {
                     CallbackContext<UpsertContext> context{ctxt};
                 };
+#if CONTEXT_TYPE == 0
                 UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 1
+                UpsertContext context{loads[i]};
+#elif CONTEXT_TYPE == 2
+                UpsertContext context(loads[i], lengths[i]);
+#endif
                 Status stat = store.Upsert(context, callback, 1);
                 if (stat == Status::NotFound)
                     fail++;
@@ -139,6 +175,12 @@ void *measureWorker(void *args) {
 }
 
 void prepare() {
+#if FIXED_VALUE == 2
+    lengths = new uint32_t[total_count];
+    for (int i = 0; i < total_count; i++) {
+        lengths[i] = dis(engine);
+    }
+#endif
     cout << "prepare" << endl;
     workers = new pthread_t[thread_number];
     parms = new struct target[thread_number];
@@ -202,8 +244,13 @@ int main(int argc, char **argv) {
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " timer: "
          << timer_range << endl;
+#if CONTEXT_TYPE == 0
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
+#else
+    loads = (uint32_t *) calloc(total_count, sizeof(uint32_t));
+    UniformGen<uint32_t>::generate(loads, key_range, total_count);
+#endif
     prepare();
     cout << "simple" << endl;
     simpleInsert();
