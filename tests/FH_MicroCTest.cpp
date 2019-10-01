@@ -78,7 +78,7 @@ pthread_t *workers;
 struct target *parms;
 
 std::default_random_engine engine(static_cast<int>(chrono::steady_clock::now().time_since_epoch().count()));
-std::uniform_int_distribution<size_t> dis(0, 127);
+std::uniform_int_distribution<size_t> dis(2, 127);
 
 void simpleInsert() {
     Tracer tracer;
