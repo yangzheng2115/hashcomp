@@ -161,7 +161,7 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    DeleteContext(uint64_t key) : key_{key} {}
+    DeleteContext(Key key) : key_{key} {}
 
     DeleteContext(const DeleteContext &other) : key_{other.key_} {}
 

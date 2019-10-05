@@ -40,6 +40,8 @@ private:
 
 class UpsertContext;
 
+class DeleteContext;
+
 class ReadContext;
 
 class GenLock {
@@ -124,6 +126,8 @@ public:
 
     friend class UpsertContext;
 
+    friend class DeleteContext;
+
     friend class ReadContext;
 
 private:
@@ -145,7 +149,7 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    UpsertContext(uint32_t key, uint32_t length) : key_{key}, length_{length} {}
+    UpsertContext(Key key, uint32_t length) : key_{key}, length_{length} {}
 
     /// Copy (and deep-copy) constructor.
     UpsertContext(const UpsertContext &other) : key_{other.key_}, length_{other.length_} {}
@@ -186,6 +190,44 @@ public:
         std::memset(value.buffer(), 88, length_);
         value.gen_lock_.unlock(false);
         return true;
+    }
+
+protected:
+    /// The explicit interface requires a DeepCopy_Internal() implementation.
+    Status DeepCopy_Internal(IAsyncContext *&context_copy) {
+        return IAsyncContext::DeepCopy_Internal(*this, context_copy);
+    }
+
+private:
+    Key key_;
+    uint32_t length_;
+};
+
+class DeleteContext : public IAsyncContext {
+public:
+    typedef Key key_t;
+    typedef Value value_t;
+
+    DeleteContext(Key key) : key_{key} {}
+
+    /// Copy (and deep-copy) constructor.
+    DeleteContext(const DeleteContext &other) : key_{other.key_}, length_{other.length_} {}
+
+    /// The implicit and explicit interfaces require a key() accessor.
+    inline const Key &key() const {
+        return key_;
+    }
+
+    inline uint32_t value_size() const {
+        return sizeof(Value) + length_;
+    }
+
+    /// Non-atomic and atomic Put() methods.
+    inline void Put(Value &value) {
+        value.gen_lock_.store(0);
+        value.size_ = sizeof(Value) + length_;
+        value.length_ = length_;
+        std::memset(value.buffer(), 88, length_);
     }
 
 protected:

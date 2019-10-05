@@ -41,6 +41,8 @@ private:
 
 class UpsertContext;
 
+class DeleteContext;
+
 class ReadContext;
 
 class alignas(16) Value {
@@ -52,6 +54,8 @@ public:
     }
 
     friend class UpsertContext;
+
+    friend class DeleteContext;
 
     friend class ReadContext;
 
@@ -65,7 +69,7 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    UpsertContext(uint32_t key) : key_{key} {}
+    UpsertContext(Key key) : key_{key} {}
 
     /// Copy (and deep-copy) constructor.
     UpsertContext(const UpsertContext &other) : key_{other.key_} {}
@@ -101,6 +105,41 @@ public:
         std::memset(value.value_, 42, 7);
         value.length_.store(7);
         return true;
+    }
+
+protected:
+    /// The explicit interface requires a DeepCopy_Internal() implementation.
+    Status DeepCopy_Internal(IAsyncContext *&context_copy) {
+        return IAsyncContext::DeepCopy_Internal(*this, context_copy);
+    }
+
+private:
+    Key key_;
+};
+
+class DeleteContext : public IAsyncContext {
+public:
+    typedef Key key_t;
+    typedef Value value_t;
+
+    DeleteContext(Key key) : key_{key} {}
+
+    /// Copy (and deep-copy) constructor.
+    DeleteContext(const DeleteContext &other) : key_{other.key_} {}
+
+    /// The implicit and explicit interfaces require a key() accessor.
+    inline const Key &key() const {
+        return key_;
+    }
+
+    inline static constexpr uint32_t value_size() {
+        return sizeof(value_t);
+    }
+
+    /// Non-atomic and atomic Put() methods.
+    inline void Put(Value &value) {
+        value.length_ = 5;
+        std::memset(value.value_, 23, 5);
     }
 
 protected:

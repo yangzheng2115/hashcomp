@@ -5,7 +5,26 @@
 #include "tracer.h"
 #include <stdio.h>
 #include "faster.h"
+
+#define CONTEXT_TYPE 1
+
+#if CONTEXT_TYPE == 0
+
 #include "kvcontext.h"
+
+#elif CONTEXT_TYPE == 1
+
+#include "ckvcontext.h"
+
+#elif CONTEXT_TYPE == 2
+
+#include "cvkvcontext.h"
+
+#else
+
+#error "Context not supported"
+
+#endif
 
 #define DEFAULT_STORE_BASE (1LLU << 27)
 
@@ -40,7 +59,13 @@ void *singleInsert(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{i, i};
+#elif CONTEXT_TYPE == 1
+        UpsertContext context(i);
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(i, sizeof(uint64_t));
+#endif
         Status stat = store->Upsert(context, callback, 1);
     }
 }
@@ -143,7 +168,13 @@ void *dummyInsert(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{i, i};
+#elif CONTEXT_TYPE == 1
+        UpsertContext context(i);
+#elif CONTEXT_TYPE == 2
+        UpsertContext context{i, sizeof(uint64_t)};
+#endif
         Status stat = store->Upsert(context, callback, 1);
         //cout << store->Size() << endl;
     }
