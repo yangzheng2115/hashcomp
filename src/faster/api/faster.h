@@ -1259,12 +1259,23 @@ inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
     }
 
     if (address >= read_only_address) {
-        if (atomic_entry->load().address() == address) {
-            atomic_entry->store(HashBucketEntry::kInvalidEntry);
-        } else {
-            return InternalDelete(pending_context);
+        record_t *record = reinterpret_cast<record_t *> (hlog.Get(address));
+        if (atomic_entry->load().address() == address &&
+            record->header.previous_address() < hlog.begin_address.load()) {
+            //atomic_entry->store(HashBucketEntry::kInvalidEntry);
+            Address address;
+            record_t *record = reinterpret_cast<record_t *> (hlog.Get(address));
+            if (record->header.previous_address() == HashBucketEntry::kInvalidEntry)
+                address = HashBucketEntry::kInvalidEntry;
+            else
+                address = record->header.previous_address();
+
+            HashBucketEntry entry(address, 0, false);
+            if (atomic_entry->compare_exchange_strong(expected_entry, entry)) {
+                return OperationStatus::SUCCESS;
+            }
         }
-        return OperationStatus::SUCCESS;
+        return InternalDelete(pending_context);
     }
 
     create_record:
