@@ -12,6 +12,10 @@ else ()
     set(CMAKE_CXX_STANDARD 11)
 endif ()
 
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src/gtest)
+add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
+
 include_directories("./")
 include_directories("./src")
 include_directories("./src/bench")
@@ -115,6 +119,7 @@ endif ()
 option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
+            tests/FH_Unit/in_memory_test.cpp
             tests/FH_InsertDeleteUpsertTest.cpp
             tests/FH_RoundInsertDeleteTest.cpp
             tests/FH_MicroDeleteTest.cpp
@@ -236,7 +241,7 @@ foreach (sourcefile ${FH_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${LTBB} ${AIO} ${UUID})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${LTBB} ${AIO} ${UUID})
 endforeach (sourcefile ${FH_TESTS_EXES})
 
 set(MF_TESTS_EXES ${MH_TEST})
