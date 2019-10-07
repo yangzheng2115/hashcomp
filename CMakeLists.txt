@@ -119,7 +119,9 @@ endif ()
 option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
+            tests/FH_Unit/faster_function_test.cpp
             tests/FH_Unit/in_memory_test.cpp
+            tests/FH_Unit/faster_struct_test.cpp
             tests/FH_InsertDeleteUpsertTest.cpp
             tests/FH_RoundInsertDeleteTest.cpp
             tests/FH_MicroDeleteTest.cpp
@@ -172,6 +174,7 @@ endif ()
 option(WITH_STRUCT "build with structs" ON)
 if (WITH_STRUCT)
     set(STRUCT_TEST
+            utils/DummyTest.cpp
             utils/Struct_UnionTest.cpp
             utils/PTR_UnitTest.cpp
             utils/Load_UnitTest.cpp)
