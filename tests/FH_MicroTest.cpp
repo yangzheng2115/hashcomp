@@ -129,15 +129,21 @@ void *measureWorker(void *args) {
             };
 #if CONTEXT_TYPE == 0
             ReadContext context{loads[i]};
-#elif CONTEXT_TYPE == 2
-            ReadContext context(loads[i]);
-#endif
 
             Status result = store.Read(context, callback, 1);
             if (result == Status::Ok)
                 hit++;
             else
                 fail++;
+#elif CONTEXT_TYPE == 2
+            ReadContext context(loads[i]);
+
+            Status result = store.Read(context, callback, 1);
+            if (result == Status::Ok && *(uint64_t *) (context.output_bytes) == total_count - loads[i])
+                hit++;
+            else
+                fail++;
+#endif
 #else
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
