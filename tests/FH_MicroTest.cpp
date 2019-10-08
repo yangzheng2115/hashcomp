@@ -182,7 +182,7 @@ void prepare() {
 #if CONTEXT_TYPE == 2
     content = new uint64_t[total_count];
     for (long i = 0; i < total_count; i++) {
-        content[i] = total_count - i;
+        content[i] = total_count - loads[i];
     }
 #endif
 }
