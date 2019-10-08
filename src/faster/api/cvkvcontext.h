@@ -120,8 +120,21 @@ class Value {
 public:
     Value() : gen_lock_{0}, size_{0}, length_{0} {}
 
+    ~Value() { delete[] value_; }
+
     inline uint32_t size() const {
         return size_;
+    }
+
+    void reset(uint8_t *value, uint32_t length) {
+        length_ = length;
+        size_ = sizeof(Value) + length;
+        value_ = new uint8_t[length_];
+        std::memcpy(value_, value, length);
+    }
+
+    uint8_t *get() {
+        return buffer();
     }
 
     friend class UpsertContext;
@@ -134,13 +147,14 @@ private:
     AtomicGenLock gen_lock_;
     uint32_t size_;
     uint32_t length_;
+    uint8_t *value_;
 
     inline const uint8_t *buffer() const {
-        return reinterpret_cast<const uint8_t *>(this + 1);
+        return value_;
     }
 
     inline uint8_t *buffer() {
-        return reinterpret_cast<uint8_t *>(this + 1);
+        return value_;
     }
 };
 
@@ -149,10 +163,17 @@ public:
     typedef Key key_t;
     typedef Value value_t;
 
-    UpsertContext(Key key, uint32_t length) : key_{key}, length_{length} {}
+    UpsertContext(Key key, uint32_t length) : key_{key}, length_{length}, input_buffer(new uint8_t[length_]) {}
 
     /// Copy (and deep-copy) constructor.
-    UpsertContext(const UpsertContext &other) : key_{other.key_}, length_{other.length_} {}
+    UpsertContext(const UpsertContext &other) : key_{other.key_}, length_{other.length_} {
+        input_buffer = new uint8_t[length_];
+        std::memcpy(input_buffer, other.input_buffer, length_);
+    }
+
+    ~UpsertContext() { delete[] input_buffer; }
+
+    void reset(uint8_t *buffer) { std::memcpy(input_buffer, buffer, length_); }
 
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {
@@ -163,12 +184,18 @@ public:
         return sizeof(Value) + length_;
     }
 
+    inline uint8_t *get() const {
+        return input_buffer;
+    }
+
     /// Non-atomic and atomic Put() methods.
     inline void Put(Value &value) {
         value.gen_lock_.store(0);
         value.size_ = sizeof(Value) + length_;
         value.length_ = length_;
-        std::memset(value.buffer(), 88, length_);
+        value.reset(input_buffer, length_);
+        /* if (value.buffer() == nullptr) value.reset() = new uint8_t[value.length_];
+         std::memcpy(value.buffer(), input_buffer, length_);*/
     }
 
     inline bool PutAtomic(Value &value) {
@@ -187,7 +214,7 @@ public:
         }
         // In-place update overwrites length and buffer, but not size.
         value.length_ = length_;
-        std::memset(value.buffer(), 88, length_);
+        std::memcpy(value.buffer(), input_buffer, length_);
         value.gen_lock_.unlock(false);
         return true;
     }
@@ -201,6 +228,7 @@ protected:
 private:
     Key key_;
     uint32_t length_;
+    uint8_t *input_buffer;
 };
 
 class DeleteContext : public IAsyncContext {
@@ -251,6 +279,8 @@ public:
     /// Copy (and deep-copy) constructor.
     ReadContext(const ReadContext &other) : key_{other.key_}, output_length{0} {}
 
+    ~ReadContext() { delete[] output_bytes; }
+
     /// The implicit and explicit interfaces require a key() accessor.
     inline const Key &key() const {
         return key_;
@@ -266,8 +296,8 @@ public:
         do {
             before = value.gen_lock_.load();
             output_length = value.length_;
-            output_bytes[0] = value.buffer()[0];
-            output_bytes[1] = value.buffer()[value.length_ - 1];
+            output_bytes = new uint8_t[output_length];
+            std::memcpy(output_bytes, value.buffer(), output_length);
             after = value.gen_lock_.load();
         } while (before.gen_number != after.gen_number);
     }
@@ -283,7 +313,7 @@ private:
 public:
     uint8_t output_length;
     // Extract two bytes of output.
-    uint8_t output_bytes[2];
+    uint8_t *output_bytes;
 };
 }
 }
