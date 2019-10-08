@@ -4,7 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "faster.h"
+
+#define CONTEXT_TYPE 2
+#if CONTEXT_TYPE == 0
 #include "kvcontext.h"
+#elif CONTEXT_TYPE == 2
+
+#include "cvkvcontext.h"
+
+#endif
 
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
@@ -13,9 +21,9 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        0
+#define TEST_LOOKUP        1
 
-#define DEFAULT_STORE_BASE 1000000000LLU
+#define DEFAULT_STORE_BASE 100000000LLU
 
 using namespace FASTER::api;
 
@@ -34,6 +42,10 @@ store_t store{init_size, 17179869184, "storage"};
 
 uint64_t *loads;
 
+#if CONTEXT_TYPE == 2
+uint64_t *content;
+#endif
+
 long total_time;
 
 uint64_t exists = 0;
@@ -43,6 +55,8 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 uint64_t total_count = DEFAULT_KEYS_COUNT;
+
+uint64_t timer_range = default_timer_range;
 
 int thread_number = DEFAULT_THREAD_NUM;
 
@@ -70,7 +84,12 @@ void simpleInsert() {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -84,7 +103,12 @@ void *insertWorker(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
+#if CONTEXT_TYPE == 0
         UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
+#endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
     }
@@ -103,7 +127,11 @@ void *measureWorker(void *args) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<ReadContext> context{ctxt};
             };
+#if CONTEXT_TYPE == 0
             ReadContext context{loads[i]};
+#elif CONTEXT_TYPE == 2
+            ReadContext context(loads[i]);
+#endif
 
             Status result = store.Read(context, callback, 1);
             if (result == Status::Ok)
@@ -111,11 +139,15 @@ void *measureWorker(void *args) {
             else
                 fail++;
 #else
-
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
+#if CONTEXT_TYPE == 0
             UpsertContext context{loads[i], loads[i]};
+#elif CONTEXT_TYPE == 2
+            UpsertContext context(loads[i], 8);
+            context.reset((uint8_t *) (content + i));
+#endif
             Status stat = store.Upsert(context, callback, 1);
             if (stat == Status::NotFound)
                 fail++;
@@ -147,6 +179,12 @@ void prepare() {
             parms[i].insert[j] = j;
         }
     }
+#if CONTEXT_TYPE == 2
+    content = new uint64_t[total_count];
+    for (long i = 0; i < total_count; i++) {
+        content[i] = total_count - i;
+    }
+#endif
 }
 
 void finish() {
@@ -157,6 +195,9 @@ void finish() {
     delete[] parms;
     delete[] workers;
     delete[] output;
+#if CONTEXT_TYPE == 2
+    delete[] content;
+#endif
 }
 
 void multiWorkers() {
@@ -175,7 +216,7 @@ void multiWorkers() {
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
-    while (timer.elapsedSeconds() < default_timer_range) {
+    while (timer.elapsedSeconds() < timer_range) {
         sleep(1);
     }
     stopMeasure.store(1, memory_order_relaxed);
@@ -188,12 +229,14 @@ void multiWorkers() {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 3) {
+    if (argc > 4) {
         thread_number = std::atol(argv[1]);
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
+        timer_range = std::atol(argv[4]);
     }
-    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
+    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " time: "
+         << timer_range << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
