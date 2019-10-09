@@ -15,11 +15,16 @@ using namespace FASTER::api;
 using namespace FASTER::io;
 using namespace FASTER::core;
 
+#define PRELOAD false
+
 atomic<uint64_t> tick;
 atomic<uint64_t> tickMulti;
 constexpr uint64_t rounds = (1 << 20);
 constexpr uint64_t bfsize = 256;
 constexpr uint64_t insize = 64;
+constexpr uint64_t update_number = 4;
+constexpr uint64_t read_number = 4;
+stringstream output[read_number];
 
 TEST(ContextVerify, ConcurrentRU) {
     typedef QueueIoHandler handler_t;
@@ -119,12 +124,23 @@ TEST(ContextVerify, ConcurrentRUMultiBytes) {
 
     auto updater = [](Value *loads, store_t *store, atomic<uint64_t> *tick, atomic_bool *begin) {
         while (!begin->load()) this_thread::yield();
+        uint8_t buffer[insize];
         for (int i = 0; i < rounds; i++) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
             UpsertContext context(0, insize);
+#if PRELOAD
             context.reset(loads[i % bfsize].get());
+#else
+            for (int j = 0; j < insize / sizeof(uint64_t); j++) {
+                *(uint64_t *) (buffer + j * insize / sizeof(uint64_t)) = i;
+            }
+            /*for (int j = 0; j < insize / sizeof(uint64_t); j++) {
+                ASSERT_EQ(*(uint64_t *) (buffer + j * insize / sizeof(uint64_t)), *((uint64_t *) buffer));
+            }*/
+            context.reset(buffer);
+#endif
             uint64_t *value = (uint64_t *) (loads[i % bfsize].get());
             ASSERT_EQ(*value, 256 - i % 256);
             Status stat = store->Upsert(context, callback, 1);
@@ -133,11 +149,11 @@ TEST(ContextVerify, ConcurrentRUMultiBytes) {
         }
     };
 
-    auto reader = [](store_t *store, atomic<uint64_t> *tick, atomic_bool *begin) {
+    auto reader = [](store_t *store, atomic<uint64_t> *tick, atomic_bool *begin, int *tid) {
         uint64_t oldtick = 0;
         uint64_t i = 0;
         begin->store(true);
-        cout << i << "<->" << tick->load() << endl;
+        output[*tid] << *tid << ":" << i << "<->" << tick->load() << endl;
         while (tick->load() < rounds) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<ReadContext> context{ctxt};
@@ -147,34 +163,43 @@ TEST(ContextVerify, ConcurrentRUMultiBytes) {
             if (tick->load() - oldtick < (1 << 14)) continue;
             oldtick = tick->load();
             // Nice print
-            if (i % 8 == 0) cout << endl;
-            cout.width(7);
-            cout << tick->load();
-            cout;
-            cout << ":";
-            cout.width(2);
-            cout << i++;
-            cout;
-            cout << "<->";
-            cout.width(3);
-            cout << *((uint64_t *) rc.output_bytes);
-            cout;
-            cout << " ";
+            if (i % 8 == 0 && i != 0) output[*tid] << endl;
+            output[*tid].width(7);
+            output[*tid] << tick->load();
+            output[*tid];
+            output[*tid] << ":";
+            output[*tid].width(2);
+            output[*tid] << i++;
+            output[*tid];
+            output[*tid] << "<->";
+            output[*tid].width(6);
+            output[*tid] << *((uint64_t *) rc.output_bytes);
+            output[*tid];
+            output[*tid] << " ";
             for (int j = 0; j < insize / sizeof(uint64_t); j++) {
                 ASSERT_EQ(*(uint64_t *) (rc.output_bytes + j * insize / sizeof(uint64_t)),
                           *((uint64_t *) rc.output_bytes));
             }
         }
-        cout << endl << i << "<->" << tick->load() << endl;
+        output[*tid] << endl << i << "<->" << tick->load() << endl;
     };
 
-    std::thread updateThreads[4];
-    for (int i = 0; i < 4; i++)
+    std::thread updateThreads[update_number];
+    std::thread readThreads[read_number];
+    int tids[read_number];
+    for (int i = 0; i < update_number; i++)
         updateThreads[i] = std::thread(updater, loads, &store, &tickMulti, &begin);
-    std::thread readThread(reader, &store, &tickMulti, &begin);
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < read_number; i++) {
+        tids[i] = i;
+        readThreads[i] = std::thread(reader, &store, &tickMulti, &begin, tids + i);
+    }
+    for (int i = 0; i < update_number; i++)
         updateThreads[i].join();
-    readThread.join();
+    for (int i = 0; i < read_number; i++) {
+        readThreads[i].join();
+        string outstr = output[i].str();
+        cout << outstr;
+    }
     delete[] values;
 }
 
