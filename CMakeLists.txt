@@ -51,6 +51,7 @@ endif ()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(PTHREAD -lpthread)
+    set(ATOMIC -latomic)
     set(MLIB -lm)
     set(AIO -laio)
     set(UUID -luuid)
@@ -137,6 +138,7 @@ endif ()
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
 if (WITH_MH_TESTS)
     set(MH_TEST
+            tests/MH_Unit/MH_MaskRWPtr_test.cpp
             utils/MH_UnitTest.cpp
             tests/MH_MicroTest.cpp
             tests/MH_YCSB.cpp)
@@ -257,7 +259,7 @@ foreach (sourcefile ${MF_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
 endforeach (sourcefile ${MF_TESTS_EXES})
 
 set(UTILS_EXES ${UTILS})
