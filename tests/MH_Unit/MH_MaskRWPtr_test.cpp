@@ -93,6 +93,31 @@ TEST(UnionRWTest, AtomicMaskByteTest) {
     ASSERT_EQ(amb.bytes.byte7, 0);
 }
 
+TEST(UnionRWTest, AtomicAlignasMaskByteTest) {
+    ASSERT_EQ(sizeof(AtomicAlignasMaskByte), 128 * sizeof(uint64_t));
+    AtomicAlignasMaskByte amb;
+    amb.dword.store(0xffffffffffffffff);
+    ASSERT_EQ(amb.dword.load(), 18446744073709551615LLU);
+    ASSERT_EQ(amb.bytes.byte0.load(), 255); // We can use byte#[[0]] as macro
+    ASSERT_NE(amb.bytes.byte1.load(), 255); // We can use byte#[[1]] as macro
+    ASSERT_NE(amb.bytes.byte7.load(), 255); // We can use byte#[[7]] as macro
+    amb.bytes.byte1.fetch_add(1);
+    ASSERT_NE(amb.dword, 255);
+    ASSERT_EQ(amb.dword, 18446744073709551615LLU);
+    ASSERT_NE(amb.dword, -65281);
+
+    amb.dword.store(0xffffffffffffffff);
+    amb.dword.fetch_add(1);
+    ASSERT_EQ(amb.bytes.byte0, 0);
+    ASSERT_NE(amb.bytes.byte1, 0);
+    ASSERT_NE(amb.bytes.byte2, 0);
+    ASSERT_EQ(amb.bytes.byte3, 0);
+    ASSERT_NE(amb.bytes.byte4, 0);
+    ASSERT_NE(amb.bytes.byte5, 0);
+    ASSERT_NE(amb.bytes.byte6, 0);
+    ASSERT_NE(amb.bytes.byte7, 0);
+}
+
 TEST(UnionRWTest, MaskRWPtrTest) {
     uint64_t ul = 0;
     ASSERT_EQ(ul, 0);

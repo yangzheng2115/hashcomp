@@ -62,6 +62,20 @@ union AtomicMaskByte {
     std::atomic<uint64_t> dword;
 };
 
+union AtomicAlignasMaskByte {
+    struct {
+        alignas(128)std::atomic<uint8_t> byte0;
+        alignas(128)std::atomic<uint8_t> byte1;
+        alignas(128)std::atomic<uint8_t> byte2;
+        alignas(128)std::atomic<uint8_t> byte3;
+        alignas(128)std::atomic<uint8_t> byte4;
+        alignas(128)std::atomic<uint8_t> byte5;
+        alignas(128)std::atomic<uint8_t> byte6;
+        alignas(128)std::atomic<uint8_t> byte7;
+    } bytes;
+    std::atomic<uint64_t> dword;
+};
+
 union MaskRByte {
     uint8_t byte;
     struct {
