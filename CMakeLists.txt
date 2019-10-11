@@ -12,9 +12,15 @@ else ()
     set(CMAKE_CXX_STANDARD 11)
 endif ()
 
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src/gtest)
-add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    enable_testing()
+    find_package(gtest REQUIRED)
+    include_directories(${GTEST_INCLUDE_DIRS})
+else ()
+    include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
+    include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src/gtest)
+    add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
+endif ()
 
 include_directories("./")
 include_directories("./src")
@@ -138,6 +144,7 @@ endif ()
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
 if (WITH_MH_TESTS)
     set(MH_TEST
+            tests/MH_Unit/MH_dummy_test.cpp
             tests/MH_Unit/MH_MaskRWPtr_test.cpp
             utils/MH_UnitTest.cpp
             tests/MH_MicroTest.cpp
