@@ -34,36 +34,36 @@ void ByteAdd(int &idx) {
     for (uint64_t i = 0; i < LoadPerThread; i++) {
         switch (idx % 8) {
             case 0:
-                amb.byte0.fetch_add(1);
-                if (usingSub) amb.byte0.fetch_sub(1);
+                amb.bytes.byte0.fetch_add(1);
+                if (usingSub) amb.bytes.byte0.fetch_sub(1);
                 break;
             case 1:
-                amb.byte1.fetch_add(1);
-                if (usingSub) amb.byte1.fetch_sub(1);
+                amb.bytes.byte1.fetch_add(1);
+                if (usingSub) amb.bytes.byte1.fetch_sub(1);
                 break;
             case 2:
-                amb.byte2.fetch_add(1);
-                if (usingSub) amb.byte2.fetch_sub(1);
+                amb.bytes.byte2.fetch_add(1);
+                if (usingSub) amb.bytes.byte2.fetch_sub(1);
                 break;
             case 3:
-                amb.byte3.fetch_add(1);
-                if (usingSub) amb.byte3.fetch_sub(1);
+                amb.bytes.byte3.fetch_add(1);
+                if (usingSub) amb.bytes.byte3.fetch_sub(1);
                 break;
             case 4:
-                amb.byte4.fetch_add(1);
-                if (usingSub) amb.byte4.fetch_sub(1);
+                amb.bytes.byte4.fetch_add(1);
+                if (usingSub) amb.bytes.byte4.fetch_sub(1);
                 break;
             case 5:
-                amb.byte5.fetch_add(1);
-                if (usingSub) amb.byte5.fetch_sub(1);
+                amb.bytes.byte5.fetch_add(1);
+                if (usingSub) amb.bytes.byte5.fetch_sub(1);
                 break;
             case 6:
-                amb.byte6.fetch_add(1);
-                if (usingSub) amb.byte6.fetch_sub(1);
+                amb.bytes.byte6.fetch_add(1);
+                if (usingSub) amb.bytes.byte6.fetch_sub(1);
                 break;
             case 7:
-                amb.byte7.fetch_add(1);
-                if (usingSub) amb.byte7.fetch_sub(1);
+                amb.bytes.byte7.fetch_add(1);
+                if (usingSub) amb.bytes.byte7.fetch_sub(1);
                 break;
             default:
                 return;

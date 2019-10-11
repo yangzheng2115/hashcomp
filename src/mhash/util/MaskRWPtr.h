@@ -44,7 +44,7 @@ union AtomicBytes {
         std::atomic<uint8_t> bit5;
         std::atomic<uint8_t> bit6;
         std::atomic<uint8_t> bit7;
-    };
+    } bytes;
     std::atomic<uint8_t> byte;
 };
 
@@ -58,7 +58,7 @@ union AtomicMaskByte {
         std::atomic<uint8_t> byte5;
         std::atomic<uint8_t> byte6;
         std::atomic<uint8_t> byte7;
-    };
+    } bytes;
     std::atomic<uint64_t> dword;
 };
 

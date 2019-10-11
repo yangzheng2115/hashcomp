@@ -61,11 +61,11 @@ TEST(UnionRWTest, AtomicBytesTest) {
     ASSERT_EQ(sizeof(bool), sizeof(uint8_t));
     AtomicBytes amb;
     amb.byte.store(0);
-    ASSERT_EQ(amb.bit4.load(), false); // aka 0
+    ASSERT_EQ(amb.bytes.bit4.load(), false); // aka 0
     amb.byte.store(255);
-    ASSERT_EQ(amb.bit0.load(), 255); // Ping!!!
-    ASSERT_EQ(amb.bit4.load(), false); // aka 0
-    amb.bit4.store(false);
+    ASSERT_EQ(amb.bytes.bit0.load(), 255); // Ping!!!
+    ASSERT_EQ(amb.bytes.bit4.load(), false); // aka 0
+    amb.bytes.bit4.store(false);
     ASSERT_EQ(amb.byte.load(), 255);
 }
 
@@ -74,23 +74,23 @@ TEST(UnionRWTest, AtomicMaskByteTest) {
     AtomicMaskByte amb;
     amb.dword.store(0xffffffffffffffff);
     ASSERT_EQ(amb.dword.load(), 18446744073709551615LLU);
-    ASSERT_EQ(amb.byte0.load(), 255); // We can use byte#[[0]] as macro
-    ASSERT_EQ(amb.byte7.load(), 255); // We can use byte#[[7]] as macro
-    amb.byte1.fetch_add(1);
+    ASSERT_EQ(amb.bytes.byte0.load(), 255); // We can use byte#[[0]] as macro
+    ASSERT_EQ(amb.bytes.byte7.load(), 255); // We can use byte#[[7]] as macro
+    amb.bytes.byte1.fetch_add(1);
     ASSERT_NE(amb.dword, 255);
     ASSERT_NE(amb.dword, 18446744073709551615LLU);
     ASSERT_EQ(amb.dword, -65281);
 
     amb.dword.store(0xffffffffffffffff);
     amb.dword.fetch_add(1);
-    ASSERT_EQ(amb.byte0, 0);
-    ASSERT_EQ(amb.byte1, 0);
-    ASSERT_EQ(amb.byte2, 0);
-    ASSERT_EQ(amb.byte3, 0);
-    ASSERT_EQ(amb.byte4, 0);
-    ASSERT_EQ(amb.byte5, 0);
-    ASSERT_EQ(amb.byte6, 0);
-    ASSERT_EQ(amb.byte7, 0);
+    ASSERT_EQ(amb.bytes.byte0, 0);
+    ASSERT_EQ(amb.bytes.byte1, 0);
+    ASSERT_EQ(amb.bytes.byte2, 0);
+    ASSERT_EQ(amb.bytes.byte3, 0);
+    ASSERT_EQ(amb.bytes.byte4, 0);
+    ASSERT_EQ(amb.bytes.byte5, 0);
+    ASSERT_EQ(amb.bytes.byte6, 0);
+    ASSERT_EQ(amb.bytes.byte7, 0);
 }
 
 TEST(UnionRWTest, MaskRWPtrTest) {
