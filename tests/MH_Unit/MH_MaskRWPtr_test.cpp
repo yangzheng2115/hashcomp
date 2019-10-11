@@ -11,21 +11,94 @@
 #include "gtest/gtest.h"
 #include "MaskRWPtr.h"
 
-TEST(MaskRWPtr, UninRWTest) {
+using namespace std;
+
+TEST(UnionRWTest, MaskByteTest) {
+    MaskByte mb;
+    mb.byte = 255;
+    ASSERT_EQ(mb.byte, 255);
+    ASSERT_EQ(mb.bit0, 1);
+    mb.bit0 = 0;
+    ASSERT_EQ(mb.byte, 254);
+    atomic<MaskByte> amb(mb);
+    MaskByte revalue;
+    revalue.byte = 127;
+    amb.store(revalue);
+    ASSERT_EQ(amb.load().byte, 127);
+    //Testing bit-first/byte-first-initialization
+    MaskByte rewind{127};
+    amb.store(rewind);
+    ASSERT_EQ(amb.load().byte, 1);
+    MaskByte reverse{0};
+    amb.store(reverse);
+    ASSERT_EQ(amb.load().byte, 0);
+}
+
+TEST(UnionRWTest, MaskRByteTest) {
+    MaskRByte mb;
+    mb.byte = 255;
+    ASSERT_EQ(mb.byte, 255);
+    ASSERT_EQ(mb.bit0, 1);
+    mb.bit0 = 0;
+    ASSERT_EQ(mb.byte, 254);
+    atomic<MaskRByte> amb(mb);
+    MaskRByte revalue;
+    revalue.byte = 127;
+    amb.store(revalue);
+    ASSERT_EQ(amb.load().byte, 127);
+    //Testing byte-first/bit-first-initialization
+    MaskRByte rewind{127};
+    amb.store(rewind);
+    ASSERT_EQ(amb.load().byte, 127);
+    MaskRByte reverse{0};
+    amb.store(reverse);
+    ASSERT_EQ(amb.load().byte, 0);
+}
+
+TEST(UnionRWTest, AtomicBytesTest) {
+    ASSERT_EQ(sizeof(AtomicBytes), sizeof(bool) * 8);
+    ASSERT_EQ(sizeof(atomic<bool>), sizeof(bool));
+    ASSERT_EQ(sizeof(bool), sizeof(uint8_t));
+    AtomicBytes amb;
+    amb.byte.store(0);
+    ASSERT_EQ(amb.bit4.load(), false); // aka 0
+    amb.byte.store(255);
+    ASSERT_EQ(amb.bit0.load(), 255); // Ping!!!
+    ASSERT_EQ(amb.bit4.load(), false); // aka 0
+    amb.bit4.store(false);
+    ASSERT_EQ(amb.byte.load(), 255);
+}
+
+TEST(UnionRWTest, AtomicMaskByteTest) {
+    ASSERT_EQ(sizeof(AtomicMaskByte), sizeof(uint64_t));
+    AtomicMaskByte amb;
+    amb.dword.store(0xffffffffffffffff);
+    ASSERT_EQ(amb.dword.load(), 18446744073709551615LLU);
+    ASSERT_EQ(amb.byte0.load(), 255); // We can use byte#[[0]] as macro
+    ASSERT_EQ(amb.byte7.load(), 255); // We can use byte#[[7]] as macro
+    amb.byte1.fetch_add(1);
+    ASSERT_NE(amb.dword, 255);
+    ASSERT_NE(amb.dword, 18446744073709551615LLU);
+    ASSERT_EQ(amb.dword, -65281);
+}
+
+TEST(UnionRWTest, MaskRWPtrTest) {
     uint64_t ul = 0;
-    std::cout << ul << std::endl;
+    ASSERT_EQ(ul, 0);
     std::atomic<uint64_t> aul(ul);
     aul.store(1);
-    std::cout << aul << ":" << ul << std::endl;
+    ASSERT_NE(ul, aul);
 
     MaskRWPtr ptr;
     ptr.rwptr = 0x0;
-    std::cout << ptr.rwptr << std::endl;
+    ASSERT_EQ(ptr.rwptr, 0LLU);
     std::atomic<MaskRWPtr> control0(ptr);
     MaskRWPtr newptr = ptr;
     newptr.control0++;
+    ASSERT_EQ(newptr.control0, 1LLU);
     control0.compare_exchange_strong(newptr, ptr);
-    std::cout << ptr.rwptr << ":" << ptr.control0 << std::endl;
+    ASSERT_EQ(ptr.rwptr, 0LLU);
+    ASSERT_EQ(ptr.control0, 0LLU);
 }
 
 int main(int argc, char **argv) {

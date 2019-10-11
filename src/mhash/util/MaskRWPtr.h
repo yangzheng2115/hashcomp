@@ -5,9 +5,80 @@
 #ifndef HASHCOMP_MASKRWPTR_H
 #define HASHCOMP_MASKRWPTR_H
 
+#include <atomic>
+
+constexpr uint8_t BitWidth = 1;
+
+enum MaskByteBitType {
+    ByteBit0 = 0,
+    ByteBit1 = 1,
+    ByteBit2 = 2,
+    ByteBit3 = 3,
+    ByteBit4 = 4,
+    ByteBit5 = 5,
+    ByteBit6 = 6,
+    ByteBit7 = 7
+};
+
+union MaskByte {
+    struct {
+        uint8_t bit0 : BitWidth;
+        uint8_t bit1 : BitWidth;
+        uint8_t bit2 : BitWidth;
+        uint8_t bit3 : BitWidth;
+        uint8_t bit4 : BitWidth;
+        uint8_t bit5 : BitWidth;
+        uint8_t bit6 : BitWidth;
+        uint8_t bit7 : BitWidth;
+    };
+    uint8_t byte;
+};
+
+union AtomicBytes {
+    struct {
+        std::atomic<uint8_t> bit0;
+        std::atomic<uint8_t> bit1;
+        std::atomic<uint8_t> bit2;
+        std::atomic<uint8_t> bit3;
+        std::atomic<uint8_t> bit4;
+        std::atomic<uint8_t> bit5;
+        std::atomic<uint8_t> bit6;
+        std::atomic<uint8_t> bit7;
+    };
+    std::atomic<uint8_t> byte;
+};
+
+union AtomicMaskByte {
+    struct {
+        std::atomic<uint8_t> byte0;
+        std::atomic<uint8_t> byte1;
+        std::atomic<uint8_t> byte2;
+        std::atomic<uint8_t> byte3;
+        std::atomic<uint8_t> byte4;
+        std::atomic<uint8_t> byte5;
+        std::atomic<uint8_t> byte6;
+        std::atomic<uint8_t> byte7;
+    };
+    std::atomic<uint64_t> dword;
+};
+
+union MaskRByte {
+    uint8_t byte;
+    struct {
+        uint8_t bit0 : BitWidth;
+        uint8_t bit1 : BitWidth;
+        uint8_t bit2 : BitWidth;
+        uint8_t bit3 : BitWidth;
+        uint8_t bit4 : BitWidth;
+        uint8_t bit5 : BitWidth;
+        uint8_t bit6 : BitWidth;
+        uint8_t bit7 : BitWidth;
+    };
+};
+
 enum MaskPtrBitType {
-    OffsetAddress = 0,
-    OffsetSserdda = 47,
+    OffsetBegining = 0,
+    OffsetAddress = 47,
     OffsetControl0 = 48,
     OffsetControl1 = 49,
     OffsetControl2 = 50,
@@ -23,33 +94,34 @@ enum MaskPtrBitType {
     OffsetControl12 = 60,
     OffsetControl13 = 61,
     OffsetControl14 = 62,
-    OffsetControl15 = 63
+    OffsetControl15 = 63,
+    OffsetTerminate = 64
 };
 
 union MaskRWPtr {
     struct {
-        uint64_t rAddress : OffsetSserdda;
-        uint64_t control0: OffsetControl0;
-        uint64_t control1: OffsetControl1;
-        uint64_t control2: OffsetControl2;
-        uint64_t control3: OffsetControl3;
-        uint64_t control4: OffsetControl4;
-        uint64_t control5: OffsetControl5;
-        uint64_t control6: OffsetControl6;
-        uint64_t control7: OffsetControl7;
-        uint64_t control8: OffsetControl8;
-        uint64_t control9: OffsetControl9;
-        uint64_t control10: OffsetControl10;
-        uint64_t control11: OffsetControl11;
-        uint64_t control12: OffsetControl12;
-        uint64_t control13: OffsetControl13;
-        uint64_t control14: OffsetControl14;
-        uint64_t control15: OffsetControl15;
+        uint64_t rAddress : OffsetControl0 - OffsetBegining; // 6 Bytes
+        uint64_t control0 : OffsetControl1 - OffsetControl0; // BitWidth
+        uint64_t control1 : OffsetControl2 - OffsetControl1; // BitWidth
+        uint64_t control2 : OffsetControl3 - OffsetControl2; // BitWidth
+        uint64_t control3 : OffsetControl4 - OffsetControl3; // BitWidth
+        uint64_t control4 : OffsetControl5 - OffsetControl4; // BitWidth
+        uint64_t control5 : OffsetControl6 - OffsetControl5; // BitWidth
+        uint64_t control6 : OffsetControl7 - OffsetControl6; // BitWidth
+        uint64_t control7 : OffsetControl8 - OffsetControl7; // BitWidth
+        uint64_t control8 : OffsetControl9 - OffsetControl8; // BitWidth
+        uint64_t control9 : OffsetControl10 - OffsetControl9; // BitWidth
+        uint64_t control10 : OffsetControl11 - OffsetControl10; // BitWidth
+        uint64_t control11 : OffsetControl12 - OffsetControl11; // BitWidth
+        uint64_t control12 : OffsetControl13 - OffsetControl12; // BitWidth
+        uint64_t control13 : OffsetControl14 - OffsetControl13; // BitWidth
+        uint64_t control14 : OffsetControl15 - OffsetControl14; // BitWidth
+        uint64_t control15 : OffsetTerminate - OffsetControl15; // BitWidth
     };
-    /*struct {
-        uint64_t wAddress: OffsetSserdda;
-        uint64_t wControl: short
-    };*/
+    struct {
+        uint64_t wAddress : OffsetControl0 - OffsetBegining; // 6 Bytes
+        uint64_t wControl : OffsetTerminate - OffsetControl0; // 2 Bytes or short
+    };
     uint64_t rwptr;
 };
 
