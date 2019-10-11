@@ -80,6 +80,17 @@ TEST(UnionRWTest, AtomicMaskByteTest) {
     ASSERT_NE(amb.dword, 255);
     ASSERT_NE(amb.dword, 18446744073709551615LLU);
     ASSERT_EQ(amb.dword, -65281);
+
+    amb.dword.store(0xffffffffffffffff);
+    amb.dword.fetch_add(1);
+    ASSERT_EQ(amb.byte0, 0);
+    ASSERT_EQ(amb.byte1, 0);
+    ASSERT_EQ(amb.byte2, 0);
+    ASSERT_EQ(amb.byte3, 0);
+    ASSERT_EQ(amb.byte4, 0);
+    ASSERT_EQ(amb.byte5, 0);
+    ASSERT_EQ(amb.byte6, 0);
+    ASSERT_EQ(amb.byte7, 0);
 }
 
 TEST(UnionRWTest, MaskRWPtrTest) {
