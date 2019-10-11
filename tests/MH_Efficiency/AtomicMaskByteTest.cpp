@@ -77,6 +77,7 @@ int main(int argc, char **argv) {
         TotalPayloads = std::atol(argv[2]);
         usingSub = std::atoi(argv[3]);
     }
+    cout << "Thread: " << ThreadsNumber << " total: " << TotalPayloads << " sub: " << usingSub << endl;
     amb.dword = 0;
     Tracer tracer;
     tracer.startTime();
