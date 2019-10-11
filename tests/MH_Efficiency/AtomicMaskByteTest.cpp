@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
         ThreadsNumber = std::atol(argv[1]);
         TotalPayloads = std::atol(argv[2]);
         usingSub = std::atoi(argv[3]);
+        LoadPerThread = TotalPayloads / ThreadsNumber;
         cout << "Thread: " << argv[1] << " total: " << argv[2] << " sub: " << argv[3] << endl;
     }
     cout << "Thread: " << ThreadsNumber << " total: " << TotalPayloads << " sub: " << usingSub << endl;
