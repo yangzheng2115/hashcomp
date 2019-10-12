@@ -285,6 +285,8 @@ foreach (sourcefile ${UTILS_EXES})
 endforeach (sourcefile ${UTILS_EXES})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1)
+    option(WITH_JUNCTION "build with junction" ON)
+    option(WITH_LIBCUCKOO "build with libcukoo" ON)
     option(WITH_ZT_TEST "build with xttests" ON)
 endif ()
 
@@ -382,4 +384,47 @@ if (WITH_ZT_TEST)
                 )
         target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${DL} ${PTHREAD} ${PMWCAS_LIBS})
     endforeach (sourcefile ${ZT_TESTS_EXES})
+endif ()
+
+if (WITH_JUNCTION)
+    ExternalProject_Add(junction
+            junction "${JUNCTION_PREFIX}"
+            COMMAND git clone https://github.com/preshing/turf.git
+            GIT_REPOSITORY https://github.com/preshing/junction
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE)
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+endif ()
+
+if (WITH_LIBCUCKOO)
+    ExternalProject_Add(libcuckoo
+            libcuckoo "${LIBCUCKOO_PREFIX}"
+            GIT_REPOSITORY https://github.com/efficient/libcuckoo
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE)
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} cmake -DCMAKE_INSTALL_PREFIX=../install -DBUILD_EXAMPLES=1 -DBUILD_TESTS=1
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+endif ()
+
+if (WITH_FOLLY)
+    ExternalProject_Add(folly
+            folly "${FOLLY_PREFIX}"
+            GIT_REPOSITORY https://github.com/facebook/folly
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE)
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
 endif ()
