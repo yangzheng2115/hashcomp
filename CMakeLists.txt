@@ -287,6 +287,7 @@ endforeach (sourcefile ${UTILS_EXES})
 if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1)
     option(WITH_JUNCTION "build with junction" ON)
     option(WITH_LIBCUCKOO "build with libcukoo" ON)
+    option(WITH_FOLLY "build with folly" ON)
     option(WITH_ZT_TEST "build with xttests" ON)
 endif ()
 
