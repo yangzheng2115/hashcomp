@@ -9,6 +9,8 @@
 
 constexpr uint8_t BitWidth = 1;
 
+constexpr uint8_t ByteWidth = 8;
+
 enum MaskByteBitType {
     ByteBit0 = 0,
     ByteBit1 = 1,
@@ -48,7 +50,21 @@ union AtomicBytes {
     std::atomic<uint8_t> byte;
 };
 
-union AtomicMaskByte {
+union MaskUint64 {
+    struct {
+        uint64_t byte0 : ByteWidth;
+        uint64_t byte1 : ByteWidth;
+        uint64_t byte2 : ByteWidth;
+        uint64_t byte3 : ByteWidth;
+        uint64_t byte4 : ByteWidth;
+        uint64_t byte5 : ByteWidth;
+        uint64_t byte6 : ByteWidth;
+        uint64_t byte7 : ByteWidth;
+    } bytes;
+    uint64_t dword;
+};
+
+union AtomicMaskUint64 {
     struct {
         std::atomic<uint8_t> byte0;
         std::atomic<uint8_t> byte1;
@@ -62,7 +78,7 @@ union AtomicMaskByte {
     std::atomic<uint64_t> dword;
 };
 
-union AtomicAlignasMaskByte {
+union AtomicAlignasMaskUint64 {
     struct {
         alignas(128)std::atomic<uint8_t> byte0;
         alignas(128)std::atomic<uint8_t> byte1;
@@ -138,5 +154,36 @@ union MaskRWPtr {
     };
     uint64_t rwptr;
 };
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint64_t atomic_add(uint64_t *refv, uint64_t value) {
+    return __sync_add_and_fetch(refv, value);
+}
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint64_t atomic_mask_add(MaskUint64 *refv, int idx, uint64_t value) {
+    return __sync_fetch_and_add((volatile uint8_t *) (((uint8_t *) &refv->bytes) + idx), (uint8_t) value);
+}
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint64_t atomic_mask_sub(MaskUint64 *refv, int idx, uint64_t value) {
+    return __sync_fetch_and_sub((volatile uint8_t *) (((uint8_t *) &refv->bytes) + idx), (uint8_t) value);
+}
+#ifdef __cplusplus
+}
+#endif
 
 #endif //HASHCOMP_MASKRWPTR_H

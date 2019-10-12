@@ -8,6 +8,7 @@
 #include <deque>
 #include <functional>
 #include <thread>
+#include <src/mhash/util/MaskRWPtr.h>
 #include "gtest/gtest.h"
 #include "MaskRWPtr.h"
 
@@ -70,8 +71,8 @@ TEST(UnionRWTest, AtomicBytesTest) {
 }
 
 TEST(UnionRWTest, AtomicMaskByteTest) {
-    ASSERT_EQ(sizeof(AtomicMaskByte), sizeof(uint64_t));
-    AtomicMaskByte amb;
+    ASSERT_EQ(sizeof(AtomicMaskUint64), sizeof(uint64_t));
+    AtomicMaskUint64 amb;
     amb.dword.store(0xffffffffffffffff);
     ASSERT_EQ(amb.dword.load(), 18446744073709551615LLU);
     ASSERT_EQ(amb.bytes.byte0.load(), 255); // We can use byte#[[0]] as macro
@@ -94,8 +95,8 @@ TEST(UnionRWTest, AtomicMaskByteTest) {
 }
 
 TEST(UnionRWTest, AtomicAlignasMaskByteTest) {
-    ASSERT_EQ(sizeof(AtomicAlignasMaskByte), 128 * sizeof(uint64_t));
-    AtomicAlignasMaskByte amb;
+    ASSERT_EQ(sizeof(AtomicAlignasMaskUint64), 128 * sizeof(uint64_t));
+    AtomicAlignasMaskUint64 amb;
     amb.dword.store(0xffffffffffffffff);
     ASSERT_EQ(amb.dword.load(), 18446744073709551615LLU);
     ASSERT_EQ(amb.bytes.byte0.load(), 255); // We can use byte#[[0]] as macro
@@ -135,6 +136,31 @@ TEST(UnionRWTest, MaskRWPtrTest) {
     control0.compare_exchange_strong(newptr, ptr);
     ASSERT_EQ(ptr.rwptr, 0LLU);
     ASSERT_EQ(ptr.control0, 0LLU);
+}
+
+TEST(UnionRWTest, MaskUint64Test) {
+    MaskUint64 mu;
+    mu.dword = 0;
+    ASSERT_EQ(mu.bytes.byte0, 0);
+    ASSERT_EQ(mu.bytes.byte1, 0);
+    ASSERT_EQ(mu.bytes.byte2, 0);
+    ASSERT_EQ(mu.bytes.byte3, 0);
+    ASSERT_EQ(mu.bytes.byte4, 0);
+    ASSERT_EQ(mu.bytes.byte5, 0);
+    ASSERT_EQ(mu.bytes.byte6, 0);
+    ASSERT_EQ(mu.bytes.byte7, 0);
+    ASSERT_EQ(mu.dword, 0);
+    atomic_add(&mu.dword, 1);
+    ASSERT_EQ(mu.bytes.byte0, 1);
+    ASSERT_EQ(mu.bytes.byte1, 0);
+    ASSERT_EQ(mu.dword, 1);
+    atomic_mask_add(&mu, 0, 1);
+    ASSERT_EQ(mu.bytes.byte0, 2);
+    ASSERT_EQ(mu.bytes.byte1, 0);
+    atomic_mask_add(&mu, 1, 1);
+    ASSERT_EQ(mu.bytes.byte0, 2);
+    ASSERT_EQ(mu.bytes.byte1, 1);
+    ASSERT_EQ(mu.dword, 258);
 }
 
 int main(int argc, char **argv) {

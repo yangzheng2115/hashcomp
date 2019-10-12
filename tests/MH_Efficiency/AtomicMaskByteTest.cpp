@@ -22,7 +22,29 @@ int usingSub = true;
 
 atomic<uint64_t> actualCount(0);
 
-AtomicMaskByte amb;
+AtomicMaskUint64 amb;
+
+MaskUint64 mu;
+
+void MaskUint64Add() {
+    uint64_t tick = 0;
+    for (uint64_t i = 0; i < LoadPerThread; i++) {
+        atomic_add(&mu.dword, 1);
+        if (usingSub) atomic_add(&mu.dword, -1);
+        tick++;
+    }
+    actualCount.fetch_add(tick);
+}
+
+void MaskByteAdd(int &idx) {
+    uint64_t tick = 0;
+    for (uint64_t i = 0; i < LoadPerThread; i++) {
+        atomic_mask_add(&mu, idx % 8, 1);
+        if (usingSub) atomic_mask_sub(&mu, idx % 8, 1);
+        tick++;
+    }
+    actualCount.fetch_add(tick);
+}
 
 void DWordAdd() {
     uint64_t tick = 0;
@@ -99,9 +121,10 @@ int main(int argc, char **argv) {
     for (int i = 0; i < ThreadsNumber; i++) {
         workers[i].join();
     }
-    cout << "DWord: " << tracer.getRunTime() << "<->" << actualCount.load() << endl;
+    cout << "DWord: \t" << tracer.getRunTime() << "<->" << actualCount.load() << ":" << amb.dword << endl;
 
     actualCount.store(0);
+    amb.dword.store(0);
     tracer.startTime();
 
     thread byters[ThreadsNumber];
@@ -111,6 +134,33 @@ int main(int argc, char **argv) {
     for (int i = 0; i < ThreadsNumber; i++) {
         byters[i].join();
     }
-    cout << "Bytes: " << tracer.getRunTime() << "<->" << actualCount.load() << endl;
+    cout << "Bytes: \t" << tracer.getRunTime() << "<->" << actualCount.load() << ":" << amb.dword << endl;
+
+    actualCount.store(0);
+    mu.dword = 0;
+    tracer.startTime();
+
+    thread uint64er[ThreadsNumber];
+    for (int i = 0; i < ThreadsNumber; i++) {
+        uint64er[i] = thread(MaskUint64Add);
+    }
+    for (int i = 0; i < ThreadsNumber; i++) {
+        uint64er[i].join();
+    }
+    cout << "Uint64: " << tracer.getRunTime() << "<->" << actualCount.load() << ":" << mu.dword << endl;
+
+    actualCount.store(0);
+    mu.dword = 0;
+    tracer.startTime();
+
+    thread cbyters[ThreadsNumber];
+    for (int i = 0; i < ThreadsNumber; i++) {
+        cbyters[i] = thread(MaskByteAdd, ref(i));
+    }
+    for (int i = 0; i < ThreadsNumber; i++) {
+        cbyters[i].join();
+    }
+    cout << "CByte: \t" << tracer.getRunTime() << "<->" << actualCount.load() << ":" << mu.dword << endl;
+
     return 0;
 }
