@@ -284,7 +284,8 @@ foreach (sourcefile ${UTILS_EXES})
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${UTILS_EXES})
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1)
+if ((CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1) OR CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    include(ExternalProject)
     option(WITH_JUNCTION "build with junction" ON)
     option(WITH_LIBCUCKOO "build with libcukoo" ON)
     option(WITH_FOLLY "build with folly" ON)
@@ -293,7 +294,6 @@ endif ()
 
 if (WITH_ZT_TEST)
     include_directories("src/bztree")
-    include(ExternalProject)
     set(PMEM_BACKEND "PMDK" CACHE STRING "Persistent memory backend type")
     string(TOUPPER ${PMEM_BACKEND} PMEM_BACKEND)
     set(GOOGLE_FRAMEWORK "OFF")
@@ -339,9 +339,15 @@ if (WITH_ZT_TEST)
 
     link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-    set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
+    else ()
+        set(LINK_FLAGS "-lpthread -pthread")
+    endif ()
     if (${PMEM_BACKEND} STREQUAL "PMDK")
-        set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
+        if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+            set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
+        endif ()
         if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
             link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
         else ()
@@ -388,9 +394,12 @@ if (WITH_ZT_TEST)
 endif ()
 
 if (WITH_JUNCTION)
+    set(JUNCTION_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/junction")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "JUNCTION_PREFIX: ${JUNCTION_PREFIX}")
     ExternalProject_Add(junction
-            junction "${JUNCTION_PREFIX}"
-            COMMAND git clone https://github.com/preshing/turf.git
+            PREFIX "${JUNCTION_PREFIX}"
+            #COMMAND git clone https://github.com/preshing/turf.git
             GIT_REPOSITORY https://github.com/preshing/junction
             GIT_TAG master
             INSTALL_COMMAND ""
@@ -403,8 +412,11 @@ if (WITH_JUNCTION)
 endif ()
 
 if (WITH_LIBCUCKOO)
+    set(LIBCUCKOO_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libcuckoo")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "LIBCUCKOO_PREFIX: ${LIBCUCKOO_PREFIX}")
     ExternalProject_Add(libcuckoo
-            libcuckoo "${LIBCUCKOO_PREFIX}"
+            PREFIX "${LIBCUCKOO_PREFIX}"
             GIT_REPOSITORY https://github.com/efficient/libcuckoo
             GIT_TAG master
             INSTALL_COMMAND ""
@@ -414,11 +426,36 @@ if (WITH_LIBCUCKOO)
             LOG_CONFIGURE ON
             LOG_BUILD ON
             )
+
+    include_directories(
+            ${LIBCUCKOO_PREFIX}/src/libcuckoo
+    )
+
+    link_directories(${PMWCAS_PREFIX}/src/libcukoo-build/)
+
+    set(CUKOO_TEST
+            tests/CF2_Unit/CUCKOO_Usage.cpp
+            tests/CH_MicroTest.cpp)
+
+    foreach (sourcefile ${CUKOO_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
+    endforeach (sourcefile ${CUKOO_TEST})
 endif ()
 
 if (WITH_FOLLY)
+    set(FOLLY_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/folly")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "FOLLY_PREFIX: ${FOLLY_PREFIX}")
     ExternalProject_Add(folly
-            folly "${FOLLY_PREFIX}"
+            PREFIX "${FOLLY_PREFIX}"
             GIT_REPOSITORY https://github.com/facebook/folly
             GIT_TAG master
             INSTALL_COMMAND ""
