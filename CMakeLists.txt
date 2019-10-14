@@ -22,6 +22,8 @@ else ()
     add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
 endif ()
 
+add_subdirectory(stream)
+
 include_directories("./")
 include_directories("./src")
 include_directories("./src/bench")
