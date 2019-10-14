@@ -341,18 +341,18 @@ if (WITH_ZT_TEST)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
     if (CMAKE_SYSTEM_NAME MATCHES "Linux")
         set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
+        if (${PMEM_BACKEND} STREQUAL "PMDK")
+            if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+                set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
+            endif ()
+            if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+                link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
+            else ()
+                link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/nondebug)
+            endif ()
+        endif ()
     else ()
         set(LINK_FLAGS "-lpthread -pthread")
-    endif ()
-    if (${PMEM_BACKEND} STREQUAL "PMDK")
-        if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-            set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
-        endif ()
-        if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
-        else ()
-            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/nondebug)
-        endif ()
     endif ()
     link_libraries(${LINK_FLAGS})
 
@@ -397,7 +397,7 @@ if (WITH_JUNCTION)
     set(JUNCTION_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/junction")
     message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
     message(STATUS "JUNCTION_PREFIX: ${JUNCTION_PREFIX}")
-    ExternalProject_Add(junction
+    ExternalProject_Add(junction-deps
             PREFIX "${JUNCTION_PREFIX}"
             #COMMAND git clone https://github.com/preshing/turf.git
             GIT_REPOSITORY https://github.com/preshing/junction
@@ -409,6 +409,32 @@ if (WITH_JUNCTION)
             LOG_CONFIGURE ON
             LOG_BUILD ON
             )
+
+    include_directories(
+            ${JUNCTION_PREFIX}/src/junction
+            ${JUNCTION_PREFIX}/src/turf
+            ${JUNCTION_PREFIX}/src/junction-build/include
+            ${JUNCTION_PREFIX}/src/junction-build/turf/include
+    )
+
+    add_subdirectory(${JUNCTION_PREFIX}/src/junction)
+
+    link_directories(${JUNCTION_PREFIX}/src/junction-build/)
+
+    set(JUNCTION_TEST
+            tests/CF2_Unit/Junction_Usage.cpp)
+
+    foreach (sourcefile ${JUNCTION_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} ${JUNCTION_ALL_LIBRARIES})
+    endforeach (sourcefile ${JUNCTION_TEST})
 endif ()
 
 if (WITH_LIBCUCKOO)
