@@ -422,7 +422,8 @@ if (WITH_JUNCTION)
     link_directories(${JUNCTION_PREFIX}/src/junction-build/)
 
     set(JUNCTION_TEST
-            tests/CF2_Unit/Junction_Usage.cpp)
+            tests/CF2_Unit/Junction_Usage.cpp
+            tests/JH_MicroTest.cpp)
 
     foreach (sourcefile ${JUNCTION_TEST})
         get_filename_component(exename ${sourcefile} NAME_WE)
