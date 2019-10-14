@@ -411,15 +411,15 @@ if (WITH_JUNCTION)
             )
 
     include_directories(
-            ${JUNCTION_PREFIX}/src/junction
+            ${JUNCTION_PREFIX}/src/junction-deps
             ${JUNCTION_PREFIX}/src/turf
-            ${JUNCTION_PREFIX}/src/junction-build/include
-            ${JUNCTION_PREFIX}/src/junction-build/turf/include
+            ${JUNCTION_PREFIX}/src/junction-deps-build/include
+            ${JUNCTION_PREFIX}/src/junction-deps-build/turf/include
     )
 
-    add_subdirectory(${JUNCTION_PREFIX}/src/junction)
+    add_subdirectory(${JUNCTION_PREFIX}/src/junction-deps)
 
-    link_directories(${JUNCTION_PREFIX}/src/junction-build/)
+    link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/)
 
     set(JUNCTION_TEST
             tests/CF2_Unit/Junction_Usage.cpp
