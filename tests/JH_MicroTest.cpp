@@ -105,10 +105,12 @@ void *measureWorker(void *args) {
                 else
                     fail++;
 #else
-                if (store->exchange(loads[i], new Value(loads[i])))
+                Value *old;
+                if (old = store->exchange(loads[i], new Value(loads[i])))
                     hit++;
                 else
                     fail++;
+                delete old;
 #endif
             }
         }
