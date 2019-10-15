@@ -460,7 +460,7 @@ if (WITH_LIBCUCKOO)
             ${LIBCUCKOO_PREFIX}/src/libcuckoo
     )
 
-    link_directories(${PMWCAS_PREFIX}/src/libcukoo-build/)
+    link_directories(${LIBCUCKOO_PREFIX}/src/libcukoo-build/)
 
     set(CUKOO_TEST
             tests/CF2_Unit/CUCKOO_Usage.cpp
@@ -494,4 +494,26 @@ if (WITH_FOLLY)
             LOG_CONFIGURE ON
             LOG_BUILD ON
             )
+
+    include_directories(
+            ${FOLLY_PREFIX}/src/folly
+    )
+
+    link_directories(${FOLLY_PREFIX}/src/folly-build/)
+
+    set(FOLLY_TEST
+            tests/CF2_Unit/Folly_Usage.cpp
+            tests/OH_MicroTest.cpp)
+
+    foreach (sourcefile ${FOLLY_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
+    endforeach (sourcefile ${FOLLY_TEST})
 endif ()
