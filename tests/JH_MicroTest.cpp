@@ -24,7 +24,15 @@
 
 #define DEFAULT_STORE_BASE 100000000
 
-typedef junction::ConcurrentMap_Leapfrog<uint64_t, uint64_t> maptype;
+struct Value {
+    uint64_t value;
+public:
+    Value(uint64_t v) : value(v) {}
+
+    uint64_t get() { return value; }
+};
+
+typedef junction::ConcurrentMap_Leapfrog<uint64_t, Value *> maptype;
 
 maptype *store;
 
@@ -64,7 +72,7 @@ void simpleInsert() {
     int inserted = 0;
     unordered_set<uint64_t> set;
     for (int i = 0; i < total_count; i++) {
-        store->assign(loads[i], loads[i]);
+        store->assign(loads[i], new Value(loads[i]));
         set.insert(loads[i]);
         inserted++;
     }
@@ -75,7 +83,7 @@ void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
     for (int i = 0; i < total_count; i++) {
-        store->assign(loads[i], loads[i]);
+        store->assign(loads[i], new Value(loads[i]));
         inserted++;
     }
     __sync_fetch_and_add(&exists, inserted);
@@ -91,13 +99,13 @@ void *measureWorker(void *args) {
         while (stopMeasure.load(memory_order_relaxed) == 0) {
             for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
-                uint64_t value = store->get(loads[i]);
+                uint64_t value = store->get(loads[i])->get();
                 if (value == loads[i])
                     hit++;
                 else
                     fail++;
 #else
-                if (store->exchange(loads[i], loads[i]))
+                if (store->exchange(loads[i], new Value(loads[i])))
                     hit++;
                 else
                     fail++;
@@ -189,6 +197,6 @@ int main(int argc, char **argv) {
          << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
     finish();
-    //delete mhash;
+    delete store;
     return 0;
 }
