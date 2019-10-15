@@ -18,9 +18,9 @@ if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     find_package(gtest REQUIRED)
     include_directories(${GTEST_INCLUDE_DIRS})
 else ()
-    include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/../../third-party/gtest-1.7.0/fused-src)
+    #[[include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/../../third-party/gtest-1.7.0/fused-src)
     include_directories(SYSTEM ${PROJECT_SOURCE_DIR}../../third-party/gtest-1.7.0/fused-src/gtest)
-    add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/../../third-party/gtest-1.7.0/fused-src/gtest build)
+    add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/../../third-party/gtest-1.7.0/fused-src/gtest build)]]
 endif ()
 
 set(STREAM_EFFICIENCYTEST
