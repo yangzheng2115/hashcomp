@@ -502,7 +502,6 @@ if (WITH_FOLLY)
             LOG_CONFIGURE ON
             LOG_BUILD ON
             )
-    add_dependencies(folly PMWCAS)
 
     include_directories(
             ${FOLLY_PREFIX}/src/folly
@@ -525,6 +524,6 @@ if (WITH_FOLLY)
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
         add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} folly)
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest -lfolly ${PTHREAD} ${ATOMIC})
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} -lfolly -lgflags -lglog -ldl gtest -ldouble-conversion ${PTHREAD} ${ATOMIC})
     endforeach (sourcefile ${FOLLY_TEST})
 endif ()
