@@ -427,6 +427,7 @@ if (WITH_JUNCTION)
     )
 
     link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/)
+    link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/turf)
 
     set(JUNCTION_TEST
             tests/CF2_Unit/Junction_Usage.cpp
@@ -442,7 +443,7 @@ if (WITH_JUNCTION)
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
         add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} junction-deps)
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} -ljunction)
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} -ljunction -lturf)
     endforeach (sourcefile ${JUNCTION_TEST})
 endif ()
 
@@ -524,6 +525,6 @@ if (WITH_FOLLY)
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
         add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} folly)
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest -lfolly -lglog ${PTHREAD} ${ATOMIC})
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest -lfolly ${PTHREAD} ${ATOMIC})
     endforeach (sourcefile ${FOLLY_TEST})
 endif ()
