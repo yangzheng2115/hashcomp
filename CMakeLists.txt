@@ -20,6 +20,7 @@ else ()
     include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
     include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src/gtest)
     add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
+    enable_testing()
 endif ()
 
 add_subdirectory(stream)
@@ -402,7 +403,7 @@ if (WITH_JUNCTION)
     ExternalProject_Add(junction-deps
             PREFIX "${JUNCTION_PREFIX}"
             GIT_REPOSITORY https://github.com/preshing/junction
-            UPDATE_COMMAND cd ${JUNCTION_PREFIX}/src; git clone https://github.com/preshing/turf.git
+            UPDATE_COMMAND git clone https://github.com/preshing/turf.git && rm -rf ../turf && mv turf ..
             GIT_TAG master
             INSTALL_COMMAND ""
             BUILD_COMMAND $(MAKE)
@@ -435,7 +436,7 @@ if (WITH_JUNCTION)
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
         add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} junction-deps)
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} ${JUNCTION_ALL_LIBRARIES})
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} -ljunction)
     endforeach (sourcefile ${JUNCTION_TEST})
 endif ()
 
