@@ -412,7 +412,7 @@ if (WITH_JUNCTION)
             UPDATE_COMMAND git clone https://github.com/preshing/turf.git && rm -rf ../turf && mv turf ..
             GIT_TAG master
             INSTALL_COMMAND ""
-            BUILD_COMMAND $(MAKE)
+            BUILD_COMMAND $(MAKE) -j8
             CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             LOG_DOWNLOAD ON
             LOG_CONFIGURE ON
@@ -456,7 +456,7 @@ if (WITH_LIBCUCKOO)
             GIT_REPOSITORY https://github.com/efficient/libcuckoo
             GIT_TAG master
             INSTALL_COMMAND ""
-            BUILD_COMMAND $(MAKE)
+            BUILD_COMMAND $(MAKE) -j8
             CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} cmake -DCMAKE_INSTALL_PREFIX=../install -DBUILD_EXAMPLES=1 -DBUILD_TESTS=1
             LOG_DOWNLOAD ON
             LOG_CONFIGURE ON
