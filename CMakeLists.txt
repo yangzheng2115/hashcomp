@@ -501,6 +501,7 @@ if (WITH_FOLLY)
             LOG_CONFIGURE ON
             LOG_BUILD ON
             )
+    add_dependencies(folly PMWCAS)
 
     include_directories(
             ${FOLLY_PREFIX}/src/folly
