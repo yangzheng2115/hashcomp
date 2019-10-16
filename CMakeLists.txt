@@ -401,8 +401,8 @@ if (WITH_JUNCTION)
     message(STATUS "JUNCTION_PREFIX: ${JUNCTION_PREFIX}")
     ExternalProject_Add(junction-deps
             PREFIX "${JUNCTION_PREFIX}"
-            #COMMAND git clone https://github.com/preshing/turf.git
             GIT_REPOSITORY https://github.com/preshing/junction
+            UPDATE_COMMAND cd ${JUNCTION_PREFIX}/src; git clone https://github.com/preshing/turf.git
             GIT_TAG master
             INSTALL_COMMAND ""
             BUILD_COMMAND $(MAKE)
@@ -419,8 +419,6 @@ if (WITH_JUNCTION)
             ${JUNCTION_PREFIX}/src/junction-deps-build/turf/include
     )
 
-    add_subdirectory(${JUNCTION_PREFIX}/src/junction-deps)
-
     link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/)
 
     set(JUNCTION_TEST
@@ -436,6 +434,7 @@ if (WITH_JUNCTION)
                 EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} junction-deps)
         target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} ${JUNCTION_ALL_LIBRARIES})
     endforeach (sourcefile ${JUNCTION_TEST})
 endif ()
@@ -475,6 +474,7 @@ if (WITH_LIBCUCKOO)
                 EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} libcuckoo)
         target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
     endforeach (sourcefile ${CUKOO_TEST})
 endif ()
@@ -497,6 +497,7 @@ if (WITH_FOLLY)
 
     include_directories(
             ${FOLLY_PREFIX}/src/folly
+            ${FOLLY_PREFIX}/src/folly-build
     )
 
     link_directories(${FOLLY_PREFIX}/src/folly-build/)
@@ -514,6 +515,7 @@ if (WITH_FOLLY)
                 EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} folly)
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest -lfolly -lglog ${PTHREAD} ${ATOMIC})
     endforeach (sourcefile ${FOLLY_TEST})
 endif ()

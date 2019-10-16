@@ -12,6 +12,13 @@
 #include "folly/AtomicUnorderedMap.h"
 
 TEST(FollyTest, UnitOperation) {
+    folly::AtomicHashMap<uint64_t, uint64_t> fmap(128);
+    fmap.insert(1, 1);
+    ASSERT_EQ(fmap.find(1)->second, 1);
+    fmap.insert(1, 2);
+    ASSERT_EQ(fmap.find(1)->second, 2);
+    fmap.erase(1);
+    ASSERT_EQ(fmap.find(1)->second, 1);
 }
 
 int main(int argc, char **argv) {
