@@ -10,6 +10,38 @@
 #include <vector>
 #include "tracer.h"
 
+#define ATOMIC_STYLE 0
+#if ATOMIC_STYLE == 1
+
+#include <stdlib.h>
+
+#elif ATOMIC_STYLE == 2 // ATOMIC_SPIN_LOCK
+
+class spinlock {
+private:
+    atomic_flag flag;
+
+public:
+    spinlock() : flag(ATOMIC_FLAG_INIT) {}
+
+    void lock() {
+        while (flag.test_and_set(memory_order_acquire)) {}
+    }
+
+    bool try_lock() {
+        return !flag.test_and_set(memory_order_acquire);
+    }
+
+    void unlock() {
+        flag.clear();
+    }
+};
+#elif ATOMIC_STYLE == 3
+
+#include <mutex>
+
+#endif
+
 using namespace std;
 
 //constexpr chrono::nanoseconds sleepNano = chrono::nanoseconds(1000);
@@ -143,7 +175,7 @@ void uniquePtrTests() {
         n = static_cast<node *>(pwc.get());
     }*/
 
-    cout << "Multi-thread pdegree: " << pdegree << "<->" << wallclock.element << "<>" /*<< n->element*/ << ":"
+    cout << "Multi-thread naiveLock: " << pdegree << "<->" << wallclock.element << "<>" /*<< n->element*/ << ":"
          << tracer.getRunTime() << endl;
 }
 
@@ -257,9 +289,91 @@ void uniquePtrPTests() {
         cout << "\t" << output[t].str();
     }
 
-    cout << "Multi-thread: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    cout << "Multi-thread steppingLock: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
     delete[] wallclocks;
     delete[] pwcs;
+}
+
+alignas(128)atomic<uint64_t> *pwa;
+
+atomic<uint64_t> pc(0);
+
+#if ATOMIC_STYLE == 2
+spinlock slock;
+#elif ATOMIC_STYLE == 3
+mutex mlock;
+#endif
+
+uint64_t pca = 0;
+
+void atomicAddPWorker(int tid) {
+    Tracer tracer;
+    tracer.startTime();
+    int idx = tid * pseudo_step;
+
+#pragma omp parallel for schedule(static, 1)
+    for (long r = 0; r < (iteration / pdegree); r++) {
+        //if (r % 10000000 == 0) cout << tid << ":" << r << endl;
+        if (pseudo_local != 0) {
+            pwa[idx].fetch_add(1);
+        } else {
+#if ATOMIC_STYLE == 1
+            //__atomic_fetch_add(&pca, 1, __ATOMIC_SEQ_CST);
+            __sync_fetch_and_add(&pca, 1);
+#elif ATOMIC_STYLE == 2
+            slock.lock();
+            pca++;
+            slock.unlock();
+#elif ATOMIC_STYLE == 3
+            unique_lock<mutex> lock(mlock);
+            //mlock.lock();
+            pca++;
+            //mlock.unlock();
+#else
+            pc.fetch_add(1, memory_order_acquire);
+#endif
+        }
+    }
+    output[tid] << tid << ":" << tracer.getRunTime() << endl;
+}
+
+void atomicAddPTests() {
+    wallclocks = new node[pdegree];
+    pwa = new atomic<uint64_t>[pdegree * pseudo_step];
+    for (int t = 0; t < pdegree * pseudo_step; t += pseudo_step) {
+        pwa[t] = wallclocks[t / pseudo_step].element;
+    }
+    delete[] output;
+    output = new stringstream[pdegree];
+    std::vector<thread> workers;
+    Tracer tracer;
+    cout << "Intend: " << iteration * threadOprs << " " << pdegree << endl;
+    tracer.startTime();
+    for (int t = 0; t < pdegree; t++) {
+        workers.push_back(std::thread(atomicAddPWorker, t));
+    }
+    long ec = 0;
+    for (int t = 0; t < pdegree; t++) {
+        workers[t].join();
+        //ec += wallclocks[t].element;
+        ec += pwa[t * pseudo_step].load();
+        cout << "\t" << output[t].str();
+    }
+
+#if ATOMIC_STYLE != 0
+    if (pseudo_local != 0)
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    else
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << pca << "<>" << ":" << tracer.getRunTime() << endl;
+#else
+    if (pseudo_local != 0)
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << ec << "<>" << ":" << tracer.getRunTime() << endl;
+    else
+        cout << "Multi-thread atomicAdd: " << pdegree << "<->" << pc.load() << "<>" << ":" << tracer.getRunTime()
+             << endl;
+#endif
+    delete[] wallclocks;
+    delete[] pwa;
 }
 
 int main(int argc, char **argv) {
@@ -270,6 +384,7 @@ int main(int argc, char **argv) {
     output = new stringstream[pdegree];
     uniquePtrTests();
     uniquePtrPTests();
+    atomicAddPTests();
     delete[] output;
     return 0;
 }

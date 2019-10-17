@@ -1,18 +1,15 @@
+//
+// Created by iclab on 10/12/19.
+//
+
 #include <iostream>
 #include <sstream>
-#include "tracer.h"
+#include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
-#include "faster.h"
-
-#define CONTEXT_TYPE 2
-#if CONTEXT_TYPE == 0
-#include "kvcontext.h"
-#elif CONTEXT_TYPE == 2
-
-#include "cvkvcontext.h"
-
-#endif
+#include <unordered_set>
+#include "tracer.h"
+#include "libcuckoo/cuckoohash_map.hh"
 
 #define DEFAULT_THREAD_NUM (8)
 #define DEFAULT_KEYS_COUNT (1 << 20)
@@ -23,28 +20,16 @@
 
 #define TEST_LOOKUP        1
 
-#define DEFAULT_STORE_BASE 100000000LLU
+#define COUNT_HASH         1
 
-using namespace FASTER::api;
+#define DEFAULT_STORE_BASE 100000000
 
-#ifdef _WIN32
-typedef hreadPoolIoHandler handler_t;
-#else
-typedef QueueIoHandler handler_t;
-#endif
-typedef FileSystemDisk<handler_t, 1073741824ull> disk_t;
+typedef cuckoohash_map<uint64_t, uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+        std::allocator<std::pair<const uint64_t, uint64_t>>, 8> cmap;
 
-using store_t = FasterKv<Key, Value, disk_t>;
-
-size_t init_size = next_power_of_two(DEFAULT_STORE_BASE / 2);
-
-store_t store{init_size, 17179869184, "storage"};
+cmap *store;
 
 uint64_t *loads;
-
-#if CONTEXT_TYPE == 2
-uint64_t *content;
-#endif
 
 long total_time;
 
@@ -55,8 +40,6 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 uint64_t total_count = DEFAULT_KEYS_COUNT;
-
-uint64_t timer_range = default_timer_range;
 
 int thread_number = DEFAULT_THREAD_NUM;
 
@@ -69,7 +52,7 @@ atomic<int> stopMeasure(0);
 struct target {
     int tid;
     uint64_t *insert;
-    store_t *store;
+    cmap *store;
 };
 
 pthread_t *workers;
@@ -80,17 +63,10 @@ void simpleInsert() {
     Tracer tracer;
     tracer.startTime();
     int inserted = 0;
+    unordered_set<uint64_t> set;
     for (int i = 0; i < total_count; i++) {
-        auto callback = [](IAsyncContext *ctxt, Status result) {
-            CallbackContext<UpsertContext> context{ctxt};
-        };
-#if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-        UpsertContext context(loads[i], 8);
-        context.reset((uint8_t *) (content + i));
-#endif
-        Status stat = store.Upsert(context, callback, 1);
+        store->insert(loads[i], loads[i]);
+        set.insert(loads[i]);
         inserted++;
     }
     cout << inserted << " " << tracer.getRunTime() << endl;
@@ -100,16 +76,7 @@ void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
     for (int i = 0; i < total_count; i++) {
-        auto callback = [](IAsyncContext *ctxt, Status result) {
-            CallbackContext<UpsertContext> context{ctxt};
-        };
-#if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-        UpsertContext context(loads[i], 8);
-        context.reset((uint8_t *) (content + i));
-#endif
-        Status stat = store.Upsert(context, callback, 1);
+        store->insert(loads[i], loads[i]);
         inserted++;
     }
     __sync_fetch_and_add(&exists, inserted);
@@ -121,46 +88,25 @@ void *measureWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
-    while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = 0; i < total_count; i++) {
+    try {
+        while (stopMeasure.load(memory_order_relaxed) == 0) {
+            for (int i = 0; i < total_count; i++) {
 #if TEST_LOOKUP
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<ReadContext> context{ctxt};
-            };
-#if CONTEXT_TYPE == 0
-            ReadContext context{loads[i]};
-
-            Status result = store.Read(context, callback, 1);
-            if (result == Status::Ok)
-                hit++;
-            else
-                fail++;
-#elif CONTEXT_TYPE == 2
-            ReadContext context(loads[i]);
-
-            Status result = store.Read(context, callback, 1);
-            if (result == Status::Ok && *(uint64_t *) (context.output_bytes) == total_count - loads[i])
-                hit++;
-            else
-                fail++;
-#endif
+                uint64_t value = store->find(loads[i]);
+                if (value == loads[i])
+                    hit++;
+                else
+                    fail++;
 #else
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<UpsertContext> context{ctxt};
-            };
-#if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+                if (store->update(loads[i], loads[i]))
+                    hit++;
+                else
+                    fail++;
 #endif
-            Status stat = store.Upsert(context, callback, 1);
-            if (stat == Status::NotFound)
-                fail++;
-            else
-                hit++;
-#endif
+            }
         }
+    } catch (exception e) {
+        cout << work->tid << endl;
     }
 
     long elipsed = tracer.getRunTime();
@@ -177,7 +123,7 @@ void prepare() {
     output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
         parms[i].tid = i;
-        parms[i].store = &store;
+        parms[i].store = store;
         parms[i].insert = (uint64_t *) calloc(total_count / thread_number, sizeof(uint64_t *));
         char buf[DEFAULT_STR_LENGTH];
         for (int j = 0; j < total_count / thread_number; j++) {
@@ -185,12 +131,6 @@ void prepare() {
             parms[i].insert[j] = j;
         }
     }
-#if CONTEXT_TYPE == 2
-    content = new uint64_t[total_count];
-    for (long i = 0; i < total_count; i++) {
-        content[i] = total_count - loads[i];
-    }
-#endif
 }
 
 void finish() {
@@ -201,9 +141,6 @@ void finish() {
     delete[] parms;
     delete[] workers;
     delete[] output;
-#if CONTEXT_TYPE == 2
-    delete[] content;
-#endif
 }
 
 void multiWorkers() {
@@ -222,7 +159,7 @@ void multiWorkers() {
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
-    while (timer.elapsedSeconds() < timer_range) {
+    while (timer.elapsedSeconds() < default_timer_range) {
         sleep(1);
     }
     stopMeasure.store(1, memory_order_relaxed);
@@ -235,14 +172,13 @@ void multiWorkers() {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 4) {
+    if (argc > 3) {
         thread_number = std::atol(argv[1]);
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
-        timer_range = std::atol(argv[4]);
     }
-    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " time: "
-         << timer_range << endl;
+    store = new cmap(100000000);
+    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
     loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
@@ -254,5 +190,6 @@ int main(int argc, char **argv) {
          << (double) (success + failure) * thread_number / total_time << endl;
     free(loads);
     finish();
+    //delete mhash;
     return 0;
 }

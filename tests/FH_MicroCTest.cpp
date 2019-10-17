@@ -1,17 +1,24 @@
+//
+// Created by iclab on 9/30/19.
+//
+
 #include <iostream>
 #include <sstream>
+#include <random>
 #include "tracer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "faster.h"
 
-#define CONTEXT_TYPE 2
-#if CONTEXT_TYPE == 0
-#include "kvcontext.h"
-#elif CONTEXT_TYPE == 2
+#define FIXED_VALUE 0
 
-#include "cvkvcontext.h"
+#if FIXED_VALUE == 1
+#include "ckvcontext.h"
+#else
 
+#include <cvkvcontext.h>
+
+uint32_t *lengths;
 #endif
 
 #define DEFAULT_THREAD_NUM (8)
@@ -21,7 +28,7 @@
 #define DEFAULT_STR_LENGTH 256
 //#define DEFAULT_KEY_LENGTH 8
 
-#define TEST_LOOKUP        1
+#define TEST_LOOKUP        0
 
 #define DEFAULT_STORE_BASE 100000000LLU
 
@@ -40,11 +47,7 @@ size_t init_size = next_power_of_two(DEFAULT_STORE_BASE / 2);
 
 store_t store{init_size, 17179869184, "storage"};
 
-uint64_t *loads;
-
-#if CONTEXT_TYPE == 2
-uint64_t *content;
-#endif
+uint32_t *loads;
 
 long total_time;
 
@@ -55,8 +58,6 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 uint64_t total_count = DEFAULT_KEYS_COUNT;
-
-uint64_t timer_range = default_timer_range;
 
 int thread_number = DEFAULT_THREAD_NUM;
 
@@ -76,6 +77,9 @@ pthread_t *workers;
 
 struct target *parms;
 
+std::default_random_engine engine(static_cast<int>(chrono::steady_clock::now().time_since_epoch().count()));
+std::uniform_int_distribution<size_t> dis(2, 127);
+
 void simpleInsert() {
     Tracer tracer;
     tracer.startTime();
@@ -84,11 +88,10 @@ void simpleInsert() {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
-#if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-        UpsertContext context(loads[i], 8);
-        context.reset((uint8_t *) (content + i));
+#if FIXED_VALUE == 1
+        UpsertContext context{loads[i]};
+#else
+        UpsertContext context(loads[i], lengths[i]);
 #endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
@@ -103,11 +106,10 @@ void *insertWorker(void *args) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
-#if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-        UpsertContext context(loads[i], 8);
-        context.reset((uint8_t *) (content + i));
+#if FIXED_VALUE == 1
+        UpsertContext context{loads[i]};
+#else
+        UpsertContext context(loads[i], lengths[i]);
 #endif
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
@@ -127,7 +129,6 @@ void *measureWorker(void *args) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<ReadContext> context{ctxt};
             };
-#if CONTEXT_TYPE == 0
             ReadContext context{loads[i]};
 
             Status result = store.Read(context, callback, 1);
@@ -135,24 +136,15 @@ void *measureWorker(void *args) {
                 hit++;
             else
                 fail++;
-#elif CONTEXT_TYPE == 2
-            ReadContext context(loads[i]);
-
-            Status result = store.Read(context, callback, 1);
-            if (result == Status::Ok && *(uint64_t *) (context.output_bytes) == total_count - loads[i])
-                hit++;
-            else
-                fail++;
-#endif
 #else
+
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
-#if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+#if FIXED_VALUE == 1
+            UpsertContext context{loads[i]};
+#else
+            UpsertContext context(loads[i], lengths[i]);
 #endif
             Status stat = store.Upsert(context, callback, 1);
             if (stat == Status::NotFound)
@@ -171,6 +163,12 @@ void *measureWorker(void *args) {
 }
 
 void prepare() {
+#if FIXED_VALUE == 0
+    lengths = new uint32_t[total_count];
+    for (int i = 0; i < total_count; i++) {
+        lengths[i] = dis(engine);
+    }
+#endif
     cout << "prepare" << endl;
     workers = new pthread_t[thread_number];
     parms = new struct target[thread_number];
@@ -185,12 +183,6 @@ void prepare() {
             parms[i].insert[j] = j;
         }
     }
-#if CONTEXT_TYPE == 2
-    content = new uint64_t[total_count];
-    for (long i = 0; i < total_count; i++) {
-        content[i] = total_count - loads[i];
-    }
-#endif
 }
 
 void finish() {
@@ -201,8 +193,8 @@ void finish() {
     delete[] parms;
     delete[] workers;
     delete[] output;
-#if CONTEXT_TYPE == 2
-    delete[] content;
+#if FIXED_VALUE == 0
+    delete[] lengths;
 #endif
 }
 
@@ -222,7 +214,7 @@ void multiWorkers() {
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
-    while (timer.elapsedSeconds() < timer_range) {
+    while (timer.elapsedSeconds() < default_timer_range) {
         sleep(1);
     }
     stopMeasure.store(1, memory_order_relaxed);
@@ -235,16 +227,14 @@ void multiWorkers() {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 4) {
+    if (argc > 3) {
         thread_number = std::atol(argv[1]);
         key_range = std::atol(argv[2]);
         total_count = std::atol(argv[3]);
-        timer_range = std::atol(argv[4]);
     }
-    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " time: "
-         << timer_range << endl;
-    loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
-    UniformGen<uint64_t>::generate(loads, key_range, total_count);
+    cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << endl;
+    loads = (uint32_t *) calloc(total_count, sizeof(uint32_t));
+    UniformGen<uint32_t>::generate(loads, key_range, total_count);
     prepare();
     cout << "simple" << endl;
     simpleInsert();

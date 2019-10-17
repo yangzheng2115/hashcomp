@@ -12,6 +12,19 @@ else ()
     set(CMAKE_CXX_STANDARD 11)
 endif ()
 
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    enable_testing()
+    find_package(gtest REQUIRED)
+    include_directories(${GTEST_INCLUDE_DIRS})
+else ()
+    include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
+    include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src/gtest)
+    add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
+    enable_testing()
+endif ()
+
+add_subdirectory(stream)
+
 include_directories("./")
 include_directories("./src")
 include_directories("./src/bench")
@@ -47,7 +60,9 @@ endif ()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(PTHREAD -lpthread)
+    set(ATOMIC -latomic)
     set(MLIB -lm)
+    set(DL -ldl)
     set(AIO -laio)
     set(UUID -luuid)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-function-declaration")
@@ -115,12 +130,17 @@ endif ()
 option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
+            tests/FH_Unit/faster_function_test.cpp
+            tests/FH_Unit/in_memory_test.cpp
+            tests/FH_Unit/faster_struct_test.cpp
             tests/FH_InsertDeleteUpsertTest.cpp
             tests/FH_RoundInsertDeleteTest.cpp
             tests/FH_MicroDeleteTest.cpp
             tests/FH_MicroGrowingTest.cpp
+            tests/FH_MicroCTest.cpp
             tests/FH_MicroTest.cpp
             tests/FH_YCSB.cpp
+            tests/FH_StableRUTest.cpp
             utils/FH_UnitTest.cpp
             utils/EP_UnitTest.cpp)
 endif ()
@@ -128,6 +148,9 @@ endif ()
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
 if (WITH_MH_TESTS)
     set(MH_TEST
+            tests/MH_Unit/MH_dummy_test.cpp
+            tests/MH_Unit/MH_MaskRWPtr_test.cpp
+            tests/MH_Efficiency/AtomicMaskByteTest.cpp
             utils/MH_UnitTest.cpp
             tests/MH_RoundInsertDeleteTest.cpp
             tests/MH_MicroTest.cpp
@@ -166,8 +189,10 @@ endif ()
 option(WITH_STRUCT "build with structs" ON)
 if (WITH_STRUCT)
     set(STRUCT_TEST
+            utils/DummyTest.cpp
             utils/Struct_UnionTest.cpp
-            utils/PTR_UnitTest.cpp)
+            utils/PTR_UnitTest.cpp
+            utils/Load_UnitTest.cpp)
 endif ()
 
 find_package(Threads)
@@ -234,7 +259,7 @@ foreach (sourcefile ${FH_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${LTBB} ${AIO} ${UUID})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${LTBB} ${AIO} ${UUID})
 endforeach (sourcefile ${FH_TESTS_EXES})
 
 set(MF_TESTS_EXES ${MH_TEST})
@@ -247,7 +272,7 @@ foreach (sourcefile ${MF_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
 endforeach (sourcefile ${MF_TESTS_EXES})
 
 set(UTILS_EXES ${UTILS})
@@ -263,13 +288,22 @@ foreach (sourcefile ${UTILS_EXES})
     target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD})
 endforeach (sourcefile ${UTILS_EXES})
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1)
+if ((CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.1) OR CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    include(ExternalProject)
+    if (WITH_JUNCTION)
+        option(WITH_JUNCTION "build with junction" ON)
+    endif ()
+    if (WITH_CUCKOO)
+        option(WITH_LIBCUCKOO "build with libcukoo" ON)
+    endif ()
+    if (WITH_FOLLY)
+        option(WITH_FOLLY "build with folly" ON)
+    endif ()
     option(WITH_ZT_TEST "build with xttests" ON)
 endif ()
 
 if (WITH_ZT_TEST)
     include_directories("src/bztree")
-    include(ExternalProject)
     set(PMEM_BACKEND "PMDK" CACHE STRING "Persistent memory backend type")
     string(TOUPPER ${PMEM_BACKEND} PMEM_BACKEND)
     set(GOOGLE_FRAMEWORK "OFF")
@@ -315,14 +349,20 @@ if (WITH_ZT_TEST)
 
     link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-    set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
-    if (${PMEM_BACKEND} STREQUAL "PMDK")
-        set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
-        if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
-        else ()
-            link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/nondebug)
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(LINK_FLAGS "-lnuma -lpthread -pthread -lrt -lpmwcas")
+        if (${PMEM_BACKEND} STREQUAL "PMDK")
+            if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+                set(LINK_FLAGS "${LINK_FLAGS} -lpmemobj")
+            endif ()
+            if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+                link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/debug)
+            else ()
+                link_directories(${PMWCAS_PREFIX}/src/PMWCAS-build/pmdk/src/PMDK/src/nondebug)
+            endif ()
         endif ()
+    else ()
+        set(LINK_FLAGS "-lpthread -pthread")
     endif ()
     link_libraries(${LINK_FLAGS})
 
@@ -359,6 +399,132 @@ if (WITH_ZT_TEST)
                 EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
                 OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
                 )
-        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${PTHREAD} ${PMWCAS_LIBS})
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${DL} ${PTHREAD} ${PMWCAS_LIBS})
     endforeach (sourcefile ${ZT_TESTS_EXES})
+endif ()
+
+if (WITH_JUNCTION)
+    set(JUNCTION_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/junction")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "JUNCTION_PREFIX: ${JUNCTION_PREFIX}")
+    ExternalProject_Add(junction-deps
+            PREFIX "${JUNCTION_PREFIX}"
+            GIT_REPOSITORY https://github.com/preshing/junction
+            UPDATE_COMMAND git clone https://github.com/preshing/turf.git && rm -rf ../turf && mv turf ..
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE) -j8
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+
+    include_directories(
+            ${JUNCTION_PREFIX}/src/junction-deps
+            ${JUNCTION_PREFIX}/src/turf
+            ${JUNCTION_PREFIX}/src/junction-deps-build/include
+            ${JUNCTION_PREFIX}/src/junction-deps-build/turf/include
+    )
+
+    link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/)
+    link_directories(${JUNCTION_PREFIX}/src/junction-deps-build/turf)
+
+    set(JUNCTION_TEST
+            tests/CF2_Unit/Junction_Usage.cpp
+            tests/JH_MicroTest.cpp)
+
+    foreach (sourcefile ${JUNCTION_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} junction-deps)
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC} -ljunction -lturf)
+    endforeach (sourcefile ${JUNCTION_TEST})
+endif ()
+
+if (WITH_LIBCUCKOO)
+    set(LIBCUCKOO_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libcuckoo")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "LIBCUCKOO_PREFIX: ${LIBCUCKOO_PREFIX}")
+    ExternalProject_Add(libcuckoo
+            PREFIX "${LIBCUCKOO_PREFIX}"
+            GIT_REPOSITORY https://github.com/efficient/libcuckoo
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE) -j8
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} cmake -DCMAKE_INSTALL_PREFIX=../install -DBUILD_EXAMPLES=1 -DBUILD_TESTS=1
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+
+    include_directories(
+            ${LIBCUCKOO_PREFIX}/src/libcuckoo
+    )
+
+    link_directories(${LIBCUCKOO_PREFIX}/src/libcukoo-build/)
+
+    set(CUKOO_TEST
+            tests/CF2_Unit/CUCKOO_Usage.cpp
+            tests/CH_MicroTest.cpp)
+
+    foreach (sourcefile ${CUKOO_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} libcuckoo)
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${ATOMIC})
+    endforeach (sourcefile ${CUKOO_TEST})
+endif ()
+
+if (WITH_FOLLY)
+    set(FOLLY_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/folly")
+    message(STATUS "BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "FOLLY_PREFIX: ${FOLLY_PREFIX}")
+    ExternalProject_Add(folly
+            PREFIX "${FOLLY_PREFIX}"
+            GIT_REPOSITORY https://github.com/facebook/folly
+            GIT_TAG master
+            INSTALL_COMMAND ""
+            BUILD_COMMAND $(MAKE) -j8
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            LOG_DOWNLOAD ON
+            LOG_CONFIGURE ON
+            LOG_BUILD ON
+            )
+
+    include_directories(
+            ${FOLLY_PREFIX}/src/folly
+            ${FOLLY_PREFIX}/src/folly-build
+    )
+
+    link_directories(${FOLLY_PREFIX}/src/folly-build/)
+
+    set(FOLLY_TEST
+            tests/CF2_Unit/Folly_Usage.cpp
+            tests/OH_MicroTest.cpp)
+
+    foreach (sourcefile ${FOLLY_TEST})
+        get_filename_component(exename ${sourcefile} NAME_WE)
+        add_executable(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+        set_target_properties(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX}
+                PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
+                EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
+                OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
+                )
+        add_dependencies(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} folly)
+        target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} -lfolly -lgflags -lglog -ldl gtest -ldouble-conversion ${PTHREAD} ${ATOMIC})
+    endforeach (sourcefile ${FOLLY_TEST})
 endif ()

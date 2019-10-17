@@ -177,8 +177,7 @@ public:
     }
 
     inline void DumpDistribution() {
-        state_[resize_info_.version].DumpDistribution(
-                overflow_buckets_allocator_[resize_info_.version]);
+        state_[resize_info_.version].DumpDistribution(overflow_buckets_allocator_[resize_info_.version]);
     }
 
 private:
@@ -898,8 +897,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
                 if (latest_record_version > thread_ctx().version) {
                     // CPR shift detected: we are in the "PREPARE" phase, and a record has a version later than
                     // what we've seen.
-                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address,
-                                             expected_entry);
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
                     return OperationStatus::CPR_SHIFT_DETECTED;
                 }
             }
@@ -909,8 +907,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
             if (latest_record_version < thread_ctx().version) {
                 // Will create new record or update existing record to new version (v+1).
                 if (!lock_guard.try_lock_new()) {
-                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address,
-                                             expected_entry);
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
                     return OperationStatus::RETRY_LATER;
                 } else {
                     // Update to new version (v+1) requires RCU.
@@ -922,8 +919,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
             // All other threads are in phase {IN_PROGRESS,WAIT_PENDING,WAIT_FLUSH}.
             if (latest_record_version < thread_ctx().version) {
                 if (lock_guard.old_locked()) {
-                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address,
-                                             expected_entry);
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
                     return OperationStatus::RETRY_LATER;
                 } else {
                     // Update to new version (v+1) requires RCU.
@@ -1263,12 +1259,23 @@ inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
     }
 
     if (address >= read_only_address) {
-        if (atomic_entry->load().address() == address) {
-            atomic_entry->store(HashBucketEntry::kInvalidEntry);
-        } else {
-            return InternalDelete(pending_context);
+        record_t *record = reinterpret_cast<record_t *> (hlog.Get(address));
+        if (atomic_entry->load().address() == address &&
+            record->header.previous_address() < hlog.begin_address.load()) {
+            //atomic_entry->store(HashBucketEntry::kInvalidEntry);
+            Address address;
+            record_t *record = reinterpret_cast<record_t *> (hlog.Get(address));
+            if (record->header.previous_address() == HashBucketEntry::kInvalidEntry)
+                address = HashBucketEntry::kInvalidEntry;
+            else
+                address = record->header.previous_address();
+
+            HashBucketEntry entry(address, 0, false);
+            if (atomic_entry->compare_exchange_strong(expected_entry, entry)) {
+                return OperationStatus::SUCCESS;
+            }
         }
-        return OperationStatus::SUCCESS;
+        return InternalDelete(pending_context);
     }
 
     create_record:
@@ -1326,26 +1333,22 @@ inline Status FasterKv<K, V, D>::HandleOperationStatus(ExecutionContext &ctx, pe
         case OperationStatus::RETRY_NOW:
             switch (pending_context.type) {
                 case OperationType::Read: {
-                    async_pending_read_context_t &read_context =
-                            *static_cast<async_pending_read_context_t *>(&pending_context);
+                    async_pending_read_context_t &read_context = *static_cast<async_pending_read_context_t *>(&pending_context);
                     internal_status = InternalRead(read_context);
                     break;
                 }
                 case OperationType::Upsert: {
-                    async_pending_upsert_context_t &upsert_context =
-                            *static_cast<async_pending_upsert_context_t *>(&pending_context);
+                    async_pending_upsert_context_t &upsert_context = *static_cast<async_pending_upsert_context_t *>(&pending_context);
                     internal_status = InternalUpsert(upsert_context);
                     break;
                 }
                 case OperationType::Delete: {
-                    async_pending_delete_context_t &delete_context =
-                            *static_cast<async_pending_delete_context_t *>(&pending_context);
+                    async_pending_delete_context_t &delete_context = *static_cast<async_pending_delete_context_t *>(&pending_context);
                     internal_status = InternalDelete(delete_context);
                     break;
                 }
                 case OperationType::RMW: {
-                    async_pending_rmw_context_t &rmw_context =
-                            *static_cast<async_pending_rmw_context_t *>(&pending_context);
+                    async_pending_rmw_context_t &rmw_context = *static_cast<async_pending_rmw_context_t *>(&pending_context);
                     internal_status = InternalRmw(rmw_context, false);
                     break;
                 }
@@ -1390,8 +1393,7 @@ inline Status FasterKv<K, V, D>::HandleOperationStatus(ExecutionContext &ctx, pe
 }
 
 template<class K, class V, class D>
-inline Status FasterKv<K, V, D>::PivotAndRetry(ExecutionContext &ctx,
-                                               pending_context_t &pending_context, bool &async) {
+inline Status FasterKv<K, V, D>::PivotAndRetry(ExecutionContext &ctx, pending_context_t &pending_context, bool &async) {
     // Some invariants
     assert(ctx.version == thread_ctx().version);
     assert(thread_ctx().phase == Phase::PREPARE);
@@ -1405,8 +1407,7 @@ inline Status FasterKv<K, V, D>::PivotAndRetry(ExecutionContext &ctx,
 }
 
 template<class K, class V, class D>
-inline Status FasterKv<K, V, D>::RetryLater(ExecutionContext &ctx,
-                                            pending_context_t &pending_context, bool &async) {
+inline Status FasterKv<K, V, D>::RetryLater(ExecutionContext &ctx, pending_context_t &pending_context, bool &async) {
     IAsyncContext *context_copy;
     Status result = pending_context.DeepCopy(context_copy);
     if (result == Status::Ok) {
@@ -1427,8 +1428,8 @@ inline constexpr uint32_t FasterKv<K, V, D>::MinIoRequestSize() const {
 }
 
 template<class K, class V, class D>
-inline Status FasterKv<K, V, D>::IssueAsyncIoRequest(ExecutionContext &ctx,
-                                                     pending_context_t &pending_context, bool &async) {
+inline Status
+FasterKv<K, V, D>::IssueAsyncIoRequest(ExecutionContext &ctx, pending_context_t &pending_context, bool &async) {
     // Issue asynchronous I/O request
     uint64_t io_id = thread_ctx().io_id++;
     thread_ctx().pending_ios.insert({io_id, pending_context.key().GetHash()});
@@ -1458,8 +1459,8 @@ inline Address FasterKv<K, V, D>::BlockAllocate(uint32_t record_size) {
 }
 
 template<class K, class V, class D>
-void FasterKv<K, V, D>::AsyncGetFromDisk(Address address, uint32_t num_records,
-                                         AsyncIOCallback callback, AsyncIOContext &context) {
+void FasterKv<K, V, D>::AsyncGetFromDisk(Address address, uint32_t num_records, AsyncIOCallback callback,
+                                         AsyncIOContext &context) {
     if (epoch_.IsProtected()) {
         /// Throttling. (Thread pool, unprotected threads are not throttled.)
         while (num_pending_ios.load() > 120) {
@@ -1473,8 +1474,7 @@ void FasterKv<K, V, D>::AsyncGetFromDisk(Address address, uint32_t num_records,
 }
 
 template<class K, class V, class D>
-void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status result,
-                                                 size_t bytes_transferred) {
+void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status result, size_t bytes_transferred) {
     CallbackContext<AsyncIOContext> context{ctxt};
     faster_t *faster = reinterpret_cast<faster_t *>(context->faster);
     /// Context stack is: AsyncIOContext, PendingContext.
@@ -1493,18 +1493,17 @@ void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status res
         size_t record_size = context->record.available_bytes;
         if (record->min_disk_key_size() > record_size) {
             // Haven't read the full record in yet; I/O is not complete!
-            faster->AsyncGetFromDisk(context->address, record->min_disk_key_size(),
-                                     AsyncGetFromDiskCallback, *context.get());
+            faster->AsyncGetFromDisk(context->address, record->min_disk_key_size(), AsyncGetFromDiskCallback,
+                                     *context.get());
             context.async = true;
         } else if (record->min_disk_value_size() > record_size) {
             // Haven't read the full record in yet; I/O is not complete!
-            faster->AsyncGetFromDisk(context->address, record->min_disk_value_size(),
-                                     AsyncGetFromDiskCallback, *context.get());
+            faster->AsyncGetFromDisk(context->address, record->min_disk_value_size(), AsyncGetFromDiskCallback,
+                                     *context.get());
             context.async = true;
         } else if (record->disk_size() > record_size) {
             // Haven't read the full record in yet; I/O is not complete!
-            faster->AsyncGetFromDisk(context->address, record->disk_size(),
-                                     AsyncGetFromDiskCallback, *context.get());
+            faster->AsyncGetFromDisk(context->address, record->disk_size(), AsyncGetFromDiskCallback, *context.get());
             context.async = true;
         } else if (pending_context->key() == record->key()) {
             //The keys are same, so I/O is complete
@@ -1513,8 +1512,8 @@ void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status res
             //keys are not same. I/O is not complete
             context->address = record->header.previous_address();
             if (context->address >= faster->hlog.begin_address.load()) {
-                faster->AsyncGetFromDisk(context->address, faster->MinIoRequestSize(),
-                                         AsyncGetFromDiskCallback, *context.get());
+                faster->AsyncGetFromDisk(context->address, faster->MinIoRequestSize(), AsyncGetFromDiskCallback,
+                                         *context.get());
                 context.async = true;
             } else {
                 // Record not found, so I/O is complete.
@@ -1525,27 +1524,23 @@ void FasterKv<K, V, D>::AsyncGetFromDiskCallback(IAsyncContext *ctxt, Status res
 }
 
 template<class K, class V, class D>
-OperationStatus FasterKv<K, V, D>::InternalContinuePendingRead(ExecutionContext &context,
-                                                               AsyncIOContext &io_context) {
+OperationStatus FasterKv<K, V, D>::InternalContinuePendingRead(ExecutionContext &context, AsyncIOContext &io_context) {
     if (io_context.address >= hlog.begin_address.load()) {
         async_pending_read_context_t *pending_context = static_cast<async_pending_read_context_t *>(
                 io_context.caller_context);
         record_t *record = reinterpret_cast<record_t *>(io_context.record.GetValidPointer());
         pending_context->Get(record);
         assert(!kCopyReadsToTail);
-        return (thread_ctx().version > context.version) ? OperationStatus::SUCCESS_UNMARK :
-               OperationStatus::SUCCESS;
+        return (thread_ctx().version > context.version) ? OperationStatus::SUCCESS_UNMARK : OperationStatus::SUCCESS;
     } else {
-        return (thread_ctx().version > context.version) ? OperationStatus::NOT_FOUND_UNMARK :
-               OperationStatus::NOT_FOUND;
+        return (thread_ctx().version > context.version) ? OperationStatus::NOT_FOUND_UNMARK
+                                                        : OperationStatus::NOT_FOUND;
     }
 }
 
 template<class K, class V, class D>
-OperationStatus FasterKv<K, V, D>::InternalContinuePendingRmw(ExecutionContext &context,
-                                                              AsyncIOContext &io_context) {
-    async_pending_rmw_context_t *pending_context = static_cast<async_pending_rmw_context_t *>(
-            io_context.caller_context);
+OperationStatus FasterKv<K, V, D>::InternalContinuePendingRmw(ExecutionContext &context, AsyncIOContext &io_context) {
+    async_pending_rmw_context_t *pending_context = static_cast<async_pending_rmw_context_t *>(io_context.caller_context);
 
     // Find a hash bucket entry to store the updated value in.
     const key_t &key = pending_context->key();
@@ -1588,16 +1583,14 @@ OperationStatus FasterKv<K, V, D>::InternalContinuePendingRmw(ExecutionContext &
         pending_context->RmwInitial(new_record);
     } else {
         // The record we read from disk.
-        const record_t *disk_record = reinterpret_cast<const record_t *>(
-                io_context.record.GetValidPointer());
+        const record_t *disk_record = reinterpret_cast<const record_t *>(io_context.record.GetValidPointer());
         pending_context->RmwCopy(disk_record, new_record);
     }
 
     HashBucketEntry updated_entry{new_address, hash.tag(), false};
     if (atomic_entry->compare_exchange_strong(expected_entry, updated_entry)) {
         assert(thread_ctx().version >= context.version);
-        return (thread_ctx().version == context.version) ? OperationStatus::SUCCESS :
-               OperationStatus::SUCCESS_UNMARK;
+        return (thread_ctx().version == context.version) ? OperationStatus::SUCCESS : OperationStatus::SUCCESS_UNMARK;
     } else {
         // CAS failed; try again.
         new_record->header.invalid = true;
@@ -1701,8 +1694,8 @@ Status FasterKv<K, V, D>::WriteCprContext() {
     if (!file) {
         return Status::IOError;
     }
-    if (std::fwrite(static_cast<PersistentExecContext *>(&prev_thread_ctx()),
-                    sizeof(PersistentExecContext), 1, file) != 1) {
+    if (std::fwrite(static_cast<PersistentExecContext *>(&prev_thread_ctx()), sizeof(PersistentExecContext), 1, file) !=
+        1) {
         std::fclose(file);
         return Status::IOError;
     }
@@ -1750,17 +1743,14 @@ template<class K, class V, class D>
 Status FasterKv<K, V, D>::CheckpointFuzzyIndex() {
     uint32_t hash_table_version = resize_info_.version;
     // Checkpoint the main hash table.
-    file_t ht_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) +
-                                  "ht.dat");
+    file_t ht_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) + "ht.dat");
     RETURN_NOT_OK(ht_file.Open(&disk.handler()));
-    RETURN_NOT_OK(state_[hash_table_version].Checkpoint(disk, std::move(ht_file),
-                                                        checkpoint_.index_metadata.num_ht_bytes));
+    RETURN_NOT_OK(
+            state_[hash_table_version].Checkpoint(disk, std::move(ht_file), checkpoint_.index_metadata.num_ht_bytes));
     // Checkpoint the hash table's overflow buckets.
-    file_t ofb_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) +
-                                   "ofb.dat");
+    file_t ofb_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) + "ofb.dat");
     RETURN_NOT_OK(ofb_file.Open(&disk.handler()));
-    RETURN_NOT_OK(overflow_buckets_allocator_[hash_table_version].Checkpoint(disk,
-                                                                             std::move(ofb_file),
+    RETURN_NOT_OK(overflow_buckets_allocator_[hash_table_version].Checkpoint(disk, std::move(ofb_file),
                                                                              checkpoint_.index_metadata.num_ofb_bytes));
     checkpoint_.index_checkpoint_started = true;
     return Status::Ok;
@@ -1788,14 +1778,12 @@ Status FasterKv<K, V, D>::RecoverFuzzyIndex() {
     assert(state_[hash_table_version].size() == checkpoint_.index_metadata.table_size);
 
     // Recover the main hash table.
-    file_t ht_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) +
-                                  "ht.dat");
+    file_t ht_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) + "ht.dat");
     RETURN_NOT_OK(ht_file.Open(&disk.handler()));
-    RETURN_NOT_OK(state_[hash_table_version].Recover(disk, std::move(ht_file),
-                                                     checkpoint_.index_metadata.num_ht_bytes));
+    RETURN_NOT_OK(
+            state_[hash_table_version].Recover(disk, std::move(ht_file), checkpoint_.index_metadata.num_ht_bytes));
     // Recover the hash table's overflow buckets.
-    file_t ofb_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) +
-                                   "ofb.dat");
+    file_t ofb_file = disk.NewFile(disk.relative_index_checkpoint_path(checkpoint_.index_token) + "ofb.dat");
     RETURN_NOT_OK(ofb_file.Open(&disk.handler()));
     return overflow_buckets_allocator_[hash_table_version].Recover(disk, std::move(ofb_file),
                                                                    checkpoint_.index_metadata.num_ofb_bytes,
@@ -1950,15 +1938,16 @@ Status FasterKv<K, V, D>::RecoverHybridLogFromSnapshotFile() {
     uint32_t end_page = to_address.offset() > 0 ? to_address.page() + 1 : to_address.page();
     uint32_t capacity = hlog.buffer_size();
     RecoveryStatus recovery_status{start_page, end_page};
-    checkpoint_.snapshot_file = disk.NewFile(disk.relative_cpr_checkpoint_path(
-            checkpoint_.hybrid_log_token) + "snapshot.dat");
+    checkpoint_.snapshot_file = disk.NewFile(
+            disk.relative_cpr_checkpoint_path(checkpoint_.hybrid_log_token) + "snapshot.dat");
     RETURN_NOT_OK(checkpoint_.snapshot_file.Open(&disk.handler()));
 
     // Initially issue read request for all pages that can be held in memory
     uint32_t total_pages_to_read = end_page - start_page;
     uint32_t pages_to_read_first = std::min(capacity, total_pages_to_read);
-    RETURN_NOT_OK(hlog.AsyncReadPagesFromSnapshot(checkpoint_.snapshot_file, start_page, start_page,
-                                                  pages_to_read_first, recovery_status));
+    RETURN_NOT_OK(
+            hlog.AsyncReadPagesFromSnapshot(checkpoint_.snapshot_file, start_page, start_page, pages_to_read_first,
+                                            recovery_status));
 
     for (uint32_t page = start_page; page < end_page; ++page) {
         while (recovery_status.page_status(page) != PageRecoveryStatus::ReadDone) {
@@ -2193,8 +2182,7 @@ void FasterKv<K, V, D>::SplitHashTableBuckets() {
                         continue;
                     }
 
-                    const record_t *record = reinterpret_cast<const record_t *>(hlog.Get(
-                            old_entry.address()));
+                    const record_t *record = reinterpret_cast<const record_t *>(hlog.Get(old_entry.address()));
                     KeyHash hash = record->key().GetHash();
                     if (hash.idx(new_size) < old_size) {
                         // Record's key hashes to the 0 side of the new hash table.
@@ -2244,8 +2232,7 @@ void FasterKv<K, V, D>::SplitHashTableBuckets() {
     // Thread ack that it has finished growing the hash table.
     if (epoch_.FinishThreadPhase(Phase::GROW_IN_PROGRESS)) {
         // Let other threads know that they can use the new hash table now.
-        GlobalMoveToNextState(SystemState{Action::GrowIndex, Phase::GROW_IN_PROGRESS,
-                                          thread_ctx().version});
+        GlobalMoveToNextState(SystemState{Action::GrowIndex, Phase::GROW_IN_PROGRESS, thread_ctx().version});
     } else {
         while (system_state_.load().phase == Phase::GROW_IN_PROGRESS) {
             // Spin until all other threads have finished splitting their chunks.
@@ -2285,8 +2272,7 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                     // INDEX_CHKPT -> PREPARE
                     // Get an overestimate for the ofb's tail, after we've finished fuzzy-checkpointing the ofb.
                     // (Ensures that recovery won't accidentally reallocate from the ofb.)
-                    checkpoint_.index_metadata.ofb_count =
-                            overflow_buckets_allocator_[resize_info_.version].count();
+                    checkpoint_.index_metadata.ofb_count = overflow_buckets_allocator_[resize_info_.version].count();
                     // Write index meta data on disk
                     if (WriteIndexMetadata() != Status::Ok) {
                         checkpoint_.failed = true;
@@ -2319,8 +2305,8 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                         Address tail_address = hlog.GetTailAddress();
                         // Get final address for CPR
                         checkpoint_.log_metadata.final_address = tail_address;
-                        checkpoint_.snapshot_file = disk.NewFile(disk.relative_cpr_checkpoint_path(
-                                checkpoint_.hybrid_log_token) + "snapshot.dat");
+                        checkpoint_.snapshot_file = disk.NewFile(
+                                disk.relative_cpr_checkpoint_path(checkpoint_.hybrid_log_token) + "snapshot.dat");
                         if (checkpoint_.snapshot_file.Open(&disk.handler()) != Status::Ok) {
                             checkpoint_.failed = true;
                         }
@@ -2352,8 +2338,7 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                     } else {
                         // Get an overestimate for the ofb's tail, after we've finished fuzzy-checkpointing the
                         // ofb. (Ensures that recovery won't accidentally reallocate from the ofb.)
-                        checkpoint_.index_metadata.ofb_count =
-                                overflow_buckets_allocator_[resize_info_.version].count();
+                        checkpoint_.index_metadata.ofb_count = overflow_buckets_allocator_[resize_info_.version].count();
                         // Write index meta data on disk
                         if (WriteIndexMetadata() != Status::Ok) {
                             checkpoint_.failed = true;
@@ -2463,8 +2448,7 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
     SystemState previous_state{final_state.action, thread_ctx().phase, thread_ctx().version};
     do {
         // Identify the transition (currentState -> nextState)
-        SystemState current_state = (previous_state == final_state) ? final_state :
-                                    previous_state.GetNextState();
+        SystemState current_state = (previous_state == final_state) ? final_state : previous_state.GetNextState();
         switch (current_state.action) {
             case Action::CheckpointFull:
             case Action::CheckpointIndex:
@@ -2529,8 +2513,8 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                             // Get a new thread context; keep track of the old one as "previous."
                             thread_contexts_[Thread::id()].swap();
                             // initialize a new local context
-                            thread_ctx().Initialize(Phase::IN_PROGRESS, current_state.version,
-                                                    prev_thread_ctx().guid, prev_thread_ctx().serial_num);
+                            thread_ctx().Initialize(Phase::IN_PROGRESS, current_state.version, prev_thread_ctx().guid,
+                                                    prev_thread_ctx().serial_num);
                             // Thread ack that it has swapped contexts.
                             if (epoch_.FinishThreadPhase(Phase::IN_PROGRESS)) {
                                 GlobalMoveToNextState(current_state);
@@ -2556,8 +2540,7 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                         if (!epoch_.HasThreadFinishedPhase(Phase::WAIT_FLUSH)) {
                             bool flushed;
                             if (fold_over_snapshot) {
-                                flushed = hlog.flushed_until_address.load() >=
-                                          checkpoint_.log_metadata.final_address;
+                                flushed = hlog.flushed_until_address.load() >= checkpoint_.log_metadata.final_address;
                             } else {
                                 flushed = checkpoint_.flush_pending.load() == 0;
                             }
@@ -2577,8 +2560,7 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                         if (previous_state.phase == Phase::WAIT_FLUSH) {
                             // Persistence callback
                             if (checkpoint_.hybrid_log_persistence_callback) {
-                                checkpoint_.hybrid_log_persistence_callback(Status::Ok,
-                                                                            prev_thread_ctx().serial_num);
+                                checkpoint_.hybrid_log_persistence_callback(Status::Ok, prev_thread_ctx().serial_num);
                             }
                             // Thread has finished checkpointing.
                             thread_ctx().phase = Phase::REST;
@@ -2604,8 +2586,8 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                             // Get a new thread context; keep track of the old one as "previous."
                             thread_contexts_[Thread::id()].swap();
                             // initialize a new local context
-                            thread_ctx().Initialize(Phase::GC_IO_PENDING, current_state.version,
-                                                    prev_thread_ctx().guid, prev_thread_ctx().serial_num);
+                            thread_ctx().Initialize(Phase::GC_IO_PENDING, current_state.version, prev_thread_ctx().guid,
+                                                    prev_thread_ctx().serial_num);
                         }
 
                         // See if the old thread context has completed its pending I/Os.
