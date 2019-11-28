@@ -543,7 +543,7 @@ FasterKv<K, V, D>::FindOrCreateEntry(KeyHash hash, HashBucketEntry &expected_ent
     assert(version <= 1);
 
     while (true) {
-        bucket = &state_[version].bucket(hash);
+        bucket = &state_[version].bucket(hash);   //？？entry怎麼组织的，怎麼初始化，怎么使用
         assert(reinterpret_cast<size_t>(bucket) % Constants::kCacheLineBytes == 0);
 
         AtomicHashBucketEntry *atomic_entry = FindTentativeEntry(hash, bucket, version, expected_entry);
@@ -855,7 +855,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
     KeyHash hash = key.GetHash();
     HashBucketEntry expected_entry;
     HashBucket *bucket;
-    AtomicHashBucketEntry *atomic_entry = FindOrCreateEntry(hash, expected_entry, bucket);
+    AtomicHashBucketEntry *atomic_entry = FindOrCreateEntry(hash, expected_entry, bucket);   //entry ？？
 
     // (Note that address will be Address::kInvalidAddress, if the atomic_entry was created.)
     Address address = expected_entry.address();
@@ -868,6 +868,15 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
         // key that we might be able to update in place.
         record_t *record = reinterpret_cast<record_t *>(hlog.Get(address));
         latest_record_version = record->header.checkpoint_version;
+        /*
+        if(latest_record_version != 0){
+            cout<<"fails"<<latest_record_version<<endl;
+        }
+
+        if(latest_record_version == 0){
+            cout<<"fails"<<latest_record_version<<endl;
+        }
+         */
         if (key != record->key()) {
             address = TraceBackForKeyMatch(key, record->header.previous_address(), head_address);
         }
@@ -964,7 +973,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
                     static_cast<uint16_t>(thread_ctx().version), true, false, false,
                     expected_entry.address()},
             key};
-    pending_context.Put(record);
+    pending_context.Put(record);   //put ？？？
 
     HashBucketEntry updated_entry{new_address, hash.tag(), false};
 
@@ -1294,7 +1303,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalDelete(C &pending_context) {
     if (atomic_entry->compare_exchange_strong(expected_entry, updated_entry)) {
         // Installed the new record in the hash table.
         return OperationStatus::SUCCESS;
-    } else {
+    } else{
         // Try again.
         record->header.invalid = true;
         return InternalDelete(pending_context);

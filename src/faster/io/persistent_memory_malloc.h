@@ -251,7 +251,7 @@ public:
 
     /// Each page in the buffer is 2^25 bytes (= 32 MB).
     static constexpr uint64_t kPageSize = Address::kMaxOffset + 1;
-
+    //static constexpr uint64_t kPageSize = ((uint32_t) 1 << 8);
     /// The first 4 HLOG pages should be below the head (i.e., being flushed to disk).
     static constexpr uint32_t kNumHeadPages = 4;
 
@@ -278,6 +278,7 @@ public:
         }
         // The latest N pages should be mutable.
         num_mutable_pages_ = static_cast<uint32_t>(log_mutable_fraction * buffer_size_);
+        //num_mutable_pages_=2;
         if (num_mutable_pages_ <= 1) {
             // Need at least two mutable pages: one to write to, and one to open up when the previous
             // mutable page is full.
@@ -557,7 +558,6 @@ public:
     /// The address of the true head of the log--everything before this address has been truncated
     /// by garbage collection.
     AtomicAddress begin_address;
-
 private:
     uint32_t buffer_size_;
 
@@ -590,7 +590,6 @@ template<class D>
 inline Address PersistentMemoryMalloc<D>::Allocate(uint32_t num_slots, uint32_t &closed_page) {
     closed_page = UINT32_MAX;
     PageOffset page_offset = tail_page_offset_.Reserve(num_slots);
-
     if (page_offset.offset() + num_slots > kPageSize) {
         // The current page is full. The caller should Refresh() the epoch and wait until
         // NewPage() is successful before trying to Allocate() again.

@@ -1,0 +1,1 @@
+g++   -std=c++14 -g -g   CMakeFiles/hashcomp_PTR_UnitTest.dir/utils/PTR_UnitTest.cpp.o  -o PTR_UnitTest -lpthread 

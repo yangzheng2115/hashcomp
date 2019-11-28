@@ -118,6 +118,7 @@ static_assert(sizeof(AtomicGenLock) == 8, "sizeof(AtomicGenLock) != 8");
 
 class Value {
 public:
+
     Value() : gen_lock_{0}, size_{0}, length_{0} {}
 
     ~Value() { delete[] value_; }
@@ -196,7 +197,7 @@ public:
         value.reset(input_buffer, length_);
         /* if (value.buffer() == nullptr) value.reset() = new uint8_t[value.length_];
          std::memcpy(value.buffer(), input_buffer, length_);*/
-    }
+    }      //原子性？？
 
     inline bool PutAtomic(Value &value) {
         bool replaced;
@@ -294,11 +295,17 @@ public:
     inline void GetAtomic(const Value &value) {
         GenLock before, after;
         do {
+           //do{
+            //std::this_thread::yield();
             before = value.gen_lock_.load();
+           // } while(before.locked||before.replaced);
             output_length = value.length_;
             output_bytes = new uint8_t[output_length];
             std::memcpy(output_bytes, value.buffer(), output_length);
-            after = value.gen_lock_.load();
+            do{
+                //std::this_thread::yield();
+                after = value.gen_lock_.load();
+         } while(after.locked||after.replaced);
         } while (before.gen_number != after.gen_number);
     }
 

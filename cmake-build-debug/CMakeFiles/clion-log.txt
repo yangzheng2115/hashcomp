@@ -1,0 +1,11 @@
+/usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/yangzheng/Research/hashcomp
+/home/yangzheng/Research/hashcomp/cmake-build-debug/stream
+-- Found TBB at: 
+--  found at 
+-- Persistence support: PMDK
+-- BUILD_TYPE: Debug
+-- PMWCAS_PREFIX: /home/yangzheng/Research/hashcomp/cmake-build-debug/pmwcas
+-- ENABLE_MERGE: 0
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/yangzheng/Research/hashcomp/cmake-build-debug

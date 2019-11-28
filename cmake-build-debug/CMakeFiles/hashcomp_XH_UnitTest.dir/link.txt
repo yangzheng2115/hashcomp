@@ -1,0 +1,1 @@
+g++   -std=c++14 -g -g   CMakeFiles/hashcomp_XH_UnitTest.dir/utils/XH_UnitTest.cpp.o CMakeFiles/hashcomp_XH_UnitTest.dir/src/xhash/global.cpp.o CMakeFiles/hashcomp_XH_UnitTest.dir/src/xhash/helper.cpp.o CMakeFiles/hashcomp_XH_UnitTest.dir/src/xhash/mem_alloc.cpp.o CMakeFiles/hashcomp_XH_UnitTest.dir/src/xhash/index_hash.cpp.o  -o XH_UnitTest -lpthread 

@@ -1,0 +1,1 @@
+g++   -std=c++14 -g -g   CMakeFiles/hashcomp_LH_MicroTest.dir/tests/LH_MicroTest.cpp.o CMakeFiles/hashcomp_LH_MicroTest.dir/src/levelhash/hash.c.o CMakeFiles/hashcomp_LH_MicroTest.dir/src/levelhash/level_hashing.c.o  -o LH_MicroTest -lpthread 

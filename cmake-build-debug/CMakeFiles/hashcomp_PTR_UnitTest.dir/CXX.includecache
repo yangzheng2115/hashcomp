@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/yangzheng/Research/hashcomp/utils/PTR_UnitTest.cpp
+chrono
+-
+iostream
+-
+memory
+-
+thread
+-
+vector
+-
+

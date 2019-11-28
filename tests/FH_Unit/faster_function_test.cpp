@@ -22,8 +22,8 @@ atomic<uint64_t> tickMulti;
 constexpr uint64_t rounds = (1 << 20);
 constexpr uint64_t bfsize = 256;
 constexpr uint64_t insize = 64;
-constexpr uint64_t update_number = 4;
-constexpr uint64_t read_number = 4;
+constexpr uint64_t update_number = 8;
+constexpr uint64_t read_number = 8;
 stringstream output[read_number];
 
 TEST(ContextVerify, ConcurrentRU) {

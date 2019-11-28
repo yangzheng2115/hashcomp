@@ -142,7 +142,8 @@ if (WITH_FH_TESTS)
             tests/FH_YCSB.cpp
             tests/FH_StableRUTest.cpp
             utils/FH_UnitTest.cpp
-            utils/EP_UnitTest.cpp)
+            utils/EP_UnitTest.cpp
+            src/faster/cc/sum_store.cpp)
 endif ()
 
 option(WITH_MH_TESTS "build with multi-level hash tests " ON)
@@ -259,7 +260,7 @@ foreach (sourcefile ${FH_TESTS_EXES})
             EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
             OUTPUT_NAME ${exename}${ARTIFACT_SUFFIX}
             )
-    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${LTBB} ${AIO} ${UUID})
+    target_link_libraries(${CMAKE_PROJECT_NAME}_${exename}${ARTIFACT_SUFFIX} gtest ${PTHREAD} ${LTBB} ${AIO} ${UUID}  stdc++fs)
 endforeach (sourcefile ${FH_TESTS_EXES})
 
 set(MF_TESTS_EXES ${MH_TEST})

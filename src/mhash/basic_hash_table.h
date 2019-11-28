@@ -63,7 +63,6 @@ private:
 
     struct array_node : node {
         std::array<std::unique_ptr<node>, ARRAY_SIZE> arr_;
-
         array_node() : node(ARRAY_NODE),
                        arr_() {}
 

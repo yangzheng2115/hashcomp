@@ -18,6 +18,7 @@ using namespace FASTER::misc;
 
 using namespace FASTER::memory;
 
+using namespace std::experimental;
 /// Wrapper that exposes files to FASTER. Encapsulates segmented files, etc.
 
 namespace FASTER {
