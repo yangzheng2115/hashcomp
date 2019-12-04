@@ -19,7 +19,7 @@
 #endif
 
 #define DEFAULT_THREAD_NUM (4)
-#define DEFAULT_KEYS_COUNT (1 << 22)
+#define DEFAULT_KEYS_COUNT (1 << 23)
 #define DEFAULT_KEYS_RANGE (1 << 25)
 
 #define DEFAULT_STR_LENGTH 256
@@ -67,6 +67,7 @@ uint64_t kCheckpointInterval = 1 << 20;
 uint64_t kRefreshInterval = 1 << 8;
 uint64_t kCompletePendingInterval = 1 << 12;
 Guid retoken;
+int cd=0;
 int thread_number = DEFAULT_THREAD_NUM;
 
 int key_range = DEFAULT_KEYS_RANGE;
@@ -100,7 +101,7 @@ void simpleInsert() {
         }
     };
     store.StartSession();
-    for (int i = 0; i < total_count / 2; i++) {
+    for (int i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
@@ -113,70 +114,31 @@ void simpleInsert() {
         Status stat = store.Upsert(context, callback, 1);
         inserted++;
 
-         if(i % kCheckpointInterval == 0&&i!=0) {
+         if(i % kCheckpointInterval == 0&&i!=0&&j==0) {
              Guid token;
-             if(store.Checkpoint(nullptr, hybrid_log_persistence_callback, token)){
-               printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
-               if(j == 1){
-                   printf("%d\n",i);
-                   break;
-               }
-               else{
-                   retoken=token;
-               }
-               j++;
-             }
+             if(store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+             {
+                 if(j==0)
+                      printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
+                 j++;
+           }
          }
 
          if(i % kCompletePendingInterval == 0) {
              store.CompletePending(false);
          } else if(i % kRefreshInterval == 0) {
              store.Refresh();
+             if(j==1&&store.CheckpointCheck()){
+                 cout<<i<<endl;
+                 cd=i;
+                 break;
+             }
          }
-        store.CompletePending(true);
 
-        // Deregister thread from FASTER
-        store.StopSession();
     }
-    j=0;
-    for (int i = total_count / 2; i < total_count ; i++) {
-        auto callback = [](IAsyncContext *ctxt, Status result) {
-            CallbackContext<UpsertContext> context{ctxt};
-        };
-#if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
-#elif CONTEXT_TYPE == 2
-        UpsertContext context(loads[i], 8);
-        context.reset((uint8_t *) (content + i));
-#endif
-        Status stat = store.Upsert(context, callback, 1);
-        inserted++;
-
-        if(i % kCheckpointInterval == 0&&i!=0) {
-            Guid token;
-            if(store.Checkpoint(nullptr, hybrid_log_persistence_callback, token)){
-                printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
-                if(j == 1){
-                    printf("%d\n",i);
-                    break;
-                }
-                else{
-                    retoken=token;
-                }
-                j++;
-            }
-        }
-
-        if(i % kCompletePendingInterval == 0) {
-            store.CompletePending(false);
-        } else if(i % kRefreshInterval == 0) {
-            store.Refresh();
-        }
-        store.CompletePending(true);
-
-        // Deregister thread from FASTER
-        store.StopSession();
-    }
+    //store.CompletePending(true);
+    // Deregister thread from FASTER
+    //store.StopSession();
     cout << inserted << " " << tracer.getRunTime() << endl;
 }
 
@@ -240,8 +202,8 @@ void Populate() {
 
         if (idx % kCheckpointInterval == 0) {
             Guid token;
-            if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-                printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
+           // if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+                //printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
         }
     }
     // Make sure operations are completed
@@ -278,6 +240,7 @@ void *measureWorker(void *args) {
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
+    int k=work->tid;
     auto hybrid_log_persistence_callback = [](Status result, uint64_t persistent_serial_num) {
         if (result != Status::Ok) {
             printf("Thread %" PRIu32 " reports checkpoint failed.\n",
@@ -287,9 +250,9 @@ void *measureWorker(void *args) {
                    Thread::id(), persistent_serial_num);
         }
     };
-    store.StartSession();
-    while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = 0; i < total_count; i++) {
+   // store.StartSession();
+  //  while (stopMeasure.load(memory_order_relaxed) == 0) {
+        for (int i = cd*k/4; i < cd*(k+1)/4; i++) {
 #if TEST_LOOKUP
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<ReadContext> context{ctxt};
@@ -321,19 +284,22 @@ void *measureWorker(void *args) {
             UpsertContext context(loads[i], 8);
             context.reset((uint8_t *) (content + i));
 #endif
+
             Status stat = store.Upsert(context, callback, 1);
             if (stat == Status::NotFound)
                 fail++;
             else
                 hit++;
 #endif
+            /*
             if (i % kCheckpointInterval == 0) {
                 Guid token;
                 if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
                     printf("Thread= %d Calling Checkpoint(), token = %s\n", work->tid, token.ToString().c_str());
             }
+            */
         }
-    }
+  //  }
 
     long elipsed = tracer.getRunTime();
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
@@ -382,6 +348,7 @@ void multiWorkers() {
     output = new stringstream[thread_number];
     Tracer tracer;
     tracer.startTime();
+    /*
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
     }
@@ -389,14 +356,15 @@ void multiWorkers() {
         pthread_join(workers[i], nullptr);
     }
     cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
+    */
     Timer timer;
     timer.start();
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
-    while (timer.elapsedSeconds() < timer_range) {
-        sleep(1);
-    }
+    //while (timer.elapsedSeconds() < timer_range) {
+   //    sleep(1);
+  //  }
     stopMeasure.store(1, memory_order_relaxed);
     for (int i = 0; i < thread_number; i++) {
         pthread_join(workers[i], nullptr);
@@ -419,14 +387,24 @@ int main(int argc, char **argv) {
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
     cout << "simple" << endl;
-    string string1 = "81a3e384-44bb-4a6c-8fb5-f81486214693";
+    //string string1 = "81a3e384-44bb-4a6c-8fb5-f81486214693";
     simpleInsert();
     //RecoverAndTest(retoken, retoken);
     // Populate();
+    cd =1 << 20;
     cout << "multiinsert" << endl;
-    // multiWorkers();
+    multiWorkers();
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
+
+    success=0;
+    failure=0;
+    total_time=0;
+    cout << "multiinsert" << endl;
+    multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+
     free(loads);
     finish();
     return 0;

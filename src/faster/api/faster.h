@@ -156,6 +156,7 @@ public:
 
     bool CheckpointHybridLog(void(*hybrid_log_persistence_callback)(Status result, uint64_t persistent_serial_num),
                              Guid &token);
+    bool CheckpointCheck();
 
     Status
     Recover(const Guid &index_token, const Guid &hybrid_log_token, uint32_t &version, std::vector<Guid> &session_ids);
@@ -2690,6 +2691,17 @@ bool FasterKv<K, V, D>::Checkpoint(void(*index_persistence_callback)(Status resu
     // Let other threads know that the checkpoint has started.
     system_state_.store(desired.GetNextState());
     return true;
+}
+
+template<class K, class V, class D>
+bool FasterKv<K, V, D>::CheckpointCheck(){
+    SystemState expected{Action::None, Phase::REST, system_state_.load().version};
+    if(system_state_.load()== expected){
+        return true;  // check point done
+    }
+    else{
+        return false;  //check point still run
+    }
 }
 
 template<class K, class V, class D>
