@@ -1,1 +1,0 @@
-g++   -std=c++14 -g -g   CMakeFiles/hashcomp_AtomicMaskByteTest.dir/tests/MH_Efficiency/AtomicMaskByteTest.cpp.o CMakeFiles/hashcomp_AtomicMaskByteTest.dir/src/mhash/epoch/faster/lss_allocator.cc.o CMakeFiles/hashcomp_AtomicMaskByteTest.dir/src/mhash/epoch/faster/thread.cc.o  -o AtomicMaskByteTest third-party/gtest-1.7.0/fused-src/gtest/libgtest.a -lpthread -latomic 

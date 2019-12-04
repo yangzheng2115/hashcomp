@@ -1,1 +1,0 @@
-g++   -std=c++14 -g -g   CMakeFiles/hashcomp_XT_UnitTest.dir/utils/XT_UnitTest.cpp.o CMakeFiles/hashcomp_XT_UnitTest.dir/src/xhash/global.cpp.o CMakeFiles/hashcomp_XT_UnitTest.dir/src/xhash/helper.cpp.o CMakeFiles/hashcomp_XT_UnitTest.dir/src/xhash/mem_alloc.cpp.o CMakeFiles/hashcomp_XT_UnitTest.dir/src/xhash/index_btree.cpp.o  -o XT_UnitTest -lpthread 

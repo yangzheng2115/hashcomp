@@ -1,1 +1,0 @@
-g++   -std=c++14 -g -g   CMakeFiles/hashcomp_DummyTest.dir/utils/DummyTest.cpp.o  -o DummyTest -lpthread 

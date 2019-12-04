@@ -1,1 +1,0 @@
-g++   -std=c++14 -g -g   CMakeFiles/hashcomp_UH_UnitTest.dir/utils/UH_UnitTest.cpp.o CMakeFiles/hashcomp_UH_UnitTest.dir/src/mhash/util/City.cpp.o CMakeFiles/hashcomp_UH_UnitTest.dir/src/mhash/util/MurmurHash1.cpp.o CMakeFiles/hashcomp_UH_UnitTest.dir/src/mhash/util/MurmurHash2.cpp.o CMakeFiles/hashcomp_UH_UnitTest.dir/src/mhash/util/MurmurHash3.cpp.o  -o UH_UnitTest -lpthread 

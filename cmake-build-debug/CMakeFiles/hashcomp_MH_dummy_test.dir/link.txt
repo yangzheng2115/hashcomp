@@ -1,1 +1,0 @@
-g++   -std=c++14 -g -g   CMakeFiles/hashcomp_MH_dummy_test.dir/tests/MH_Unit/MH_dummy_test.cpp.o CMakeFiles/hashcomp_MH_dummy_test.dir/src/mhash/epoch/faster/lss_allocator.cc.o CMakeFiles/hashcomp_MH_dummy_test.dir/src/mhash/epoch/faster/thread.cc.o  -o MH_dummy_test third-party/gtest-1.7.0/fused-src/gtest/libgtest.a -lpthread -latomic 

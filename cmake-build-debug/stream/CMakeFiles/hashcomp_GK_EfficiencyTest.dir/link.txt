@@ -1,1 +1,0 @@
-g++  -g   CMakeFiles/hashcomp_GK_EfficiencyTest.dir/tests/GK_EfficiencyTest.cpp.o  -o GK_EfficiencyTest 
