@@ -298,7 +298,7 @@ namespace FASTER {
             }
 
             PersistentMemoryMalloc(uint64_t log_size, LightEpoch &epoch, disk_t &disk_, log_file_t &file_,
-                                   double log_mutable_fraction,uint32_t i)
+                                   double log_mutable_fraction, uint32_t i)
                     : PersistentMemoryMalloc(log_size, epoch, disk_, file_, Address{0}, log_mutable_fraction) {
                 /// Allocate the invalid page. Supports allocations aligned up to kCacheLineBytes.
                 uint32_t discard;
@@ -307,14 +307,15 @@ namespace FASTER {
                 /// Move the head and read-only address past the invalid page.
                 Address tail_address = static_cast<Address>(tail_page_offset_.load());
                 PageOffset tail_page_offset = tail_page_offset_.load();
-                Address a=Address{0,0,i};
-                tail_address+=Address{0,0,i}.control();
+                Address a = Address{0, 0, i};
+                tail_address += Address{0, 0, i}.control();
                 begin_address.store(tail_address);
                 read_only_address.store(tail_address);
                 safe_read_only_address.store(tail_address);
                 head_address.store(tail_address);
                 safe_head_address.store(tail_address);
             }
+
             /*
             ~PersistentMemoryMalloc() {
                 if (pages_) {
