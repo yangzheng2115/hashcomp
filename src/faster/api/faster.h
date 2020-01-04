@@ -105,9 +105,21 @@ public:
     typedef AsyncPendingRmwContext<key_t> async_pending_rmw_context_t;
 
     FasterKv(uint64_t table_size, uint64_t log_size, const std::string &filename, double log_mutable_fraction = 0.9)
-            : min_table_size_{table_size}, disk{filename, epoch_},
-              hlog{log_size, epoch_, disk, disk.log(), log_mutable_fraction},
-              system_state_{Action::None, Phase::REST, 1}, num_pending_ios{0} {
+            : min_table_size_{table_size}, disk{filename, epoch_},hlog{log_size, epoch_, disk, disk.log(), log_mutable_fraction,0}
+              ,system_state_{Action::None, Phase::REST, 1},num_pending_ios{0} {
+        // ,system_state_{Action::None, Phase::REST, 1},num_pending_ios{0}
+       // hlog{log_size, epoch_, disk, disk.log(), log_mutable_fraction,1},
+            //hlog_t a[4];
+            //for(uint32_t i=0;i<4;i++){
+           static hlog_t a(log_size, epoch_, disk, disk.log(), log_mutable_fraction,0);
+             thlog[0]=&a;
+             Address ad=thlog[0]->head_address.load();
+             static hlog_t b(log_size, epoch_, disk, disk.log(), log_mutable_fraction,1);
+             thlog[1]=&b;
+             static hlog_t c(log_size, epoch_, disk, disk.log(), log_mutable_fraction,2);
+        thlog[2]=&c;
+        static hlog_t d(log_size, epoch_, disk, disk.log(), log_mutable_fraction,3);
+        thlog[3]=&d;
         if (!Utility::IsPowerOfTwo(table_size)) {
             throw std::invalid_argument{" Size is not a power of 2"};
         }
@@ -228,6 +240,8 @@ private:
 
     inline Address BlockAllocate(uint32_t record_size);
 
+    inline Address BlockAllocateT(uint32_t record_size,uint32_t j);
+
     inline Status
     HandleOperationStatus(ExecutionContext &ctx, pending_context_t &pending_context, OperationStatus internal_status,
                           bool &async);
@@ -312,6 +326,7 @@ private:
 public:
     disk_t disk;
     hlog_t hlog;
+    hlog_t *thlog[4];
 
 private:
     static constexpr bool kCopyReadsToTail = false;
@@ -851,7 +866,8 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
     if (thread_ctx().phase != Phase::REST) {
         HeavyEnter();
     }
-
+    //cout<<Thread::id()<<endl;
+    uint16_t j=Thread::id()%4;
     const key_t &key = pending_context.key();
     KeyHash hash = key.GetHash();
     HashBucketEntry expected_entry;
@@ -860,14 +876,20 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
 
     // (Note that address will be Address::kInvalidAddress, if the atomic_entry was created.)
     Address address = expected_entry.address();
-    Address head_address = hlog.head_address.load();
-    Address read_only_address = hlog.read_only_address.load();
+    //uint32_t k=address.h();
+    uint16_t  k=expected_entry.h();
+    Address head_address=thlog[k]->head_address.load();
+    //Address hea=hlog.head_address.load();
+    //hea=thlog[0]->head_address.load();
+    Address read_only_address = thlog[k]->read_only_address.load();
+    //Address head_address = hlog.head_address.load();
+    //Address read_only_address = hlog.read_only_address.load();
     uint64_t latest_record_version = 0;
 
     if (address >= head_address) {
         // Multiple keys may share the same hash. Try to find the most recent record with a matching
         // key that we might be able to update in place.
-        record_t *record = reinterpret_cast<record_t *>(hlog.Get(address));
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
         latest_record_version = record->header.checkpoint_version;
         /*
         if(latest_record_version != 0){
@@ -887,7 +909,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
 
     // The common case
     if (thread_ctx().phase == Phase::REST && address >= read_only_address) {
-        record_t *record = reinterpret_cast<record_t *>(hlog.Get(address));
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
         if (pending_context.PutAtomic(record)) {
             return OperationStatus::SUCCESS;
         } else {
@@ -954,7 +976,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
             return OperationStatus::RETRY_NOW;
         }
         // We acquired the necessary locks, so so we can update the record's bucket atomically.
-        record_t *record = reinterpret_cast<record_t *>(hlog.Get(address));
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
         if (pending_context.PutAtomic(record)) {
             // Host successfully replaced record, atomically.
             return OperationStatus::SUCCESS;
@@ -967,8 +989,8 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
     // Create a record and attempt RCU.
     create_record:
     uint32_t record_size = record_t::size(key, pending_context.value_size());
-    Address new_address = BlockAllocate(record_size);
-    record_t *record = reinterpret_cast<record_t *>(hlog.Get(new_address));
+    Address new_address = BlockAllocateT(record_size,j);
+    record_t *record = reinterpret_cast<record_t *>(thlog[j]->Get(new_address));
     new(record) record_t{
             RecordInfo{
                     static_cast<uint16_t>(thread_ctx().version), true, false, false,
@@ -976,7 +998,8 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
             key};
     pending_context.Put(record);   //put ？？？
 
-    HashBucketEntry updated_entry{new_address, hash.tag(), false};
+    //HashBucketEntry updated_entry{new_address, hash.tag(), false};
+    HashBucketEntry updated_entry{new_address, j,hash.tag(), false};
 
     if (atomic_entry->compare_exchange_strong(expected_entry, updated_entry)) {
         // Installed the new record in the hash table.
@@ -1455,6 +1478,7 @@ template<class K, class V, class D>
 inline Address FasterKv<K, V, D>::BlockAllocate(uint32_t record_size) {
     uint32_t page;
     Address retval = hlog.Allocate(record_size, page);
+    retval+=Address{0,0,1}.control();
     while (retval < hlog.read_only_address.load()) {
         Refresh();
         // Don't overrun the hlog's tail offset.
@@ -1464,9 +1488,29 @@ inline Address FasterKv<K, V, D>::BlockAllocate(uint32_t record_size) {
             Refresh();
         }
         retval = hlog.Allocate(record_size, page);
+        retval+=Address{0,0,1}.control();
     }
     return retval;
 }
+
+template<class K, class V, class D>
+inline Address FasterKv<K, V, D>::BlockAllocateT(uint32_t record_size,uint32_t j) {
+        uint32_t page;
+        Address retval = thlog[j]->Allocate(record_size, page);
+        retval+=Address{0,0,j}.control();
+        while (retval < thlog[j]->read_only_address.load()) {
+            Refresh();
+            // Don't overrun the hlog's tail offset.
+            bool page_closed = (retval == Address::kInvalidAddress);
+            while (page_closed) {
+                page_closed = !thlog[j]->NewPage(page);
+                Refresh();
+            }
+            retval = thlog[j]->Allocate(record_size, page);
+            retval+=Address{0,0,1}.control();
+        }
+        return retval;
+    }
 
 template<class K, class V, class D>
 void FasterKv<K, V, D>::AsyncGetFromDisk(Address address, uint32_t num_records, AsyncIOCallback callback,

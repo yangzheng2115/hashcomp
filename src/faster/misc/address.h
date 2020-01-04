@@ -38,6 +38,7 @@ public:
     /// pages.
     static constexpr uint64_t kPageBits = kAddressBits - kOffsetBits;
     static constexpr uint32_t kMaxPage = ((uint32_t) 1 << kPageBits) - 1;
+    static constexpr uint64_t kHBits = 8;
 
     /// Default constructor.
     Address()
@@ -48,6 +49,9 @@ public:
             : reserved_{0}, page_{page}, offset_{offset} {
     }
 
+    Address(uint32_t page, uint32_t offset,uint32_t h)
+            : reserved_{0},h_{h}, page_{page}, offset_{offset} {
+    }
     /// Copy constructor.
     Address(const Address &other)
             : control_{other.control_} {
@@ -64,7 +68,7 @@ public:
     }
 
     inline Address &operator+=(uint64_t delta) {
-        assert(delta < UINT32_MAX);
+       // assert(delta < UINT32_MAX);
         control_ += delta;
         return *this;
     }
@@ -115,6 +119,10 @@ public:
         return static_cast<uint32_t>(offset_);
     }
 
+    inline uint32_t h() const {
+        return static_cast<uint32_t>(h_);
+    }
+
     inline uint64_t control() const {
         return control_;
     }
@@ -124,7 +132,8 @@ private:
         struct {
             uint64_t offset_ : kOffsetBits;         // 25 bits
             uint64_t page_ : kPageBits;  // 23 bits
-            uint64_t reserved_ : 64 - kAddressBits; // 16 bits
+            uint64_t h_:kHBits; //8bits
+            uint64_t reserved_ : 64 - kAddressBits - kHBits; // 8 bits
         };
         uint64_t control_;
     };
