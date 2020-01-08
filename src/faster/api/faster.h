@@ -808,16 +808,21 @@ inline OperationStatus FasterKv<K, V, D>::InternalRead(C &pending_context) const
 
     HashBucketEntry entry = atomic_entry->load();
     Address address = entry.address();
-    Address begin_address = hlog.begin_address.load();
-    Address head_address = hlog.head_address.load();
-    Address safe_read_only_address = hlog.safe_read_only_address.load();
-    Address read_only_address = hlog.read_only_address.load();
+    uint16_t  k=address.h();
+    Address begin_address = thlog[k]->begin_address.load();
+    Address head_address = thlog[k]->head_address.load();
+    Address safe_read_only_address = thlog[k]->safe_read_only_address.load();
+    Address read_only_address = thlog[k]->read_only_address.load();
+    //Address begin_address = hlog.begin_address.load();
+    //Address head_address = hlog.head_address.load();
+    //Address safe_read_only_address = hlog.safe_read_only_address.load();
+    //Address read_only_address = hlog.read_only_address.load();
     uint64_t latest_record_version = 0;
 
     if (address >= head_address) {
         // Look through the in-memory portion of the log, to find the first record (if any) whose key
         // matches.
-        const record_t *record = reinterpret_cast<const record_t *>(hlog.Get(address));
+        const record_t *record = reinterpret_cast<const record_t *>(thlog[k]->Get(address));
         latest_record_version = record->header.checkpoint_version;
         if (key != record->key()) {
             address = TraceBackForKeyMatch(key, record->header.previous_address(), head_address);
@@ -841,12 +846,12 @@ inline OperationStatus FasterKv<K, V, D>::InternalRead(C &pending_context) const
     if (address >= safe_read_only_address) {
         // Mutable or fuzzy region
         // concurrent read
-        pending_context.GetAtomic(hlog.Get(address));
+        pending_context.GetAtomic(thlog[k]->Get(address));
         return OperationStatus::SUCCESS;
     } else if (address >= head_address) {
         // Immutable region
         // single-thread read
-        pending_context.Get(hlog.Get(address));
+        pending_context.Get(thlog[k]->Get(address));
         return OperationStatus::SUCCESS;
     } else if (address >= begin_address) {
         // Record not available in-memory
@@ -877,7 +882,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
     // (Note that address will be Address::kInvalidAddress, if the atomic_entry was created.)
     Address address = expected_entry.address();
     //uint32_t k=address.h();
-    uint16_t  k=expected_entry.h();
+    uint16_t  k=address.h();
     Address head_address=thlog[k]->head_address.load();
     //Address hea=hlog.head_address.load();
     //hea=thlog[0]->head_address.load();
@@ -997,9 +1002,9 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
                     expected_entry.address()},
             key};
     pending_context.Put(record);   //put ？？？
-
+   // new_address+=Address{0,0,j}.control();
     //HashBucketEntry updated_entry{new_address, hash.tag(), false};
-    HashBucketEntry updated_entry{new_address, j,hash.tag(), false};
+    HashBucketEntry updated_entry{new_address,hash.tag(), false};
 
     if (atomic_entry->compare_exchange_strong(expected_entry, updated_entry)) {
         // Installed the new record in the hash table.
@@ -1507,7 +1512,7 @@ inline Address FasterKv<K, V, D>::BlockAllocateT(uint32_t record_size,uint32_t j
                 Refresh();
             }
             retval = thlog[j]->Allocate(record_size, page);
-            retval+=Address{0,0,1}.control();
+            retval+=Address{0,0,j}.control();
         }
         return retval;
     }

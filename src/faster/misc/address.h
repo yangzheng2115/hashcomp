@@ -36,17 +36,17 @@ namespace FASTER {
             static constexpr uint32_t kMaxOffset = ((uint32_t) 1 << kOffsetBits) - 1;
             /// --and the remaining 23 bits are used for the page index, allowing for approximately 8 million
             /// pages.
-            static constexpr uint64_t kPageBits = kAddressBits - kOffsetBits;
-            static constexpr uint32_t kMaxPage = ((uint32_t) 1 << kPageBits) - 1;
+            static uint64_t x;
             static constexpr uint64_t kHBits = 8;
-
+            static constexpr uint64_t kPageBits = kAddressBits - kOffsetBits-kHBits;
+            static constexpr uint32_t kMaxPage = ((uint32_t) 1 << kPageBits) - 1;
             /// Default constructor.
             Address()
                     : control_{0} {
             }
 
             Address(uint32_t page, uint32_t offset)
-                    : reserved_{0}, page_{page}, offset_{offset} {
+                    : reserved_{0}, h_{0},page_{page}, offset_{offset} {
             }
 
             Address(uint32_t page, uint32_t offset, uint32_t h)
@@ -132,9 +132,9 @@ namespace FASTER {
             union {
                 struct {
                     uint64_t offset_ : kOffsetBits;         // 25 bits
-                    uint64_t page_ : kPageBits;  // 23 bits
-                    uint64_t h_:kHBits; //8bits
-                    uint64_t reserved_ : 64 - kAddressBits - kHBits; // 8 bits
+                    uint64_t page_ : kPageBits;  // 15 bits
+                    uint64_t h_:kHBits; //8 bits
+                    uint64_t reserved_ : 64 - kAddressBits; // 16 bits
                 };
                 uint64_t control_;
             };

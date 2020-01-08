@@ -31,11 +31,7 @@ namespace FASTER {
             }
 
             HashBucketEntry(Address address, uint16_t tag, bool tentative)
-                    : address_{address.control()}, h_{0}, tag_{tag}, reserved_{0}, tentative_{tentative} {
-            }
-
-            HashBucketEntry(Address address, uint16_t h, uint16_t tag, bool tentative)
-                    : address_{address.control()}, h_{h}, tag_{tag}, reserved_{0}, tentative_{tentative} {
+                    : address_{address.control()}, tag_{tag}, reserved_{0}, tentative_{tentative} {
             }
 
             HashBucketEntry(uint64_t code)
@@ -67,10 +63,6 @@ namespace FASTER {
                 return Address{address_};
             }
 
-            inline uint16_t h() const {
-                return static_cast<uint16_t>(h_);
-            }
-
             inline uint16_t tag() const {
                 return static_cast<uint16_t>(tag_);
             }
@@ -87,8 +79,8 @@ namespace FASTER {
                 struct {
                     uint64_t address_ : 48; // corresponds to logical address
                     //uint64_t tag_ : 14;
-                    uint64_t h_ : 8;
-                    uint64_t tag_ : 6;
+                    //uint64_t h_ : 8;
+                    uint64_t tag_ : 14;
                     uint64_t reserved_ : 1;
                     uint64_t tentative_ : 1;
                 };

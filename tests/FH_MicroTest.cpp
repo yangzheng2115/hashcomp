@@ -6,10 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "faster.h"
+#include "address.h"
 #include "../io/file_system_disk.h"
 #include "../io/null_disk.h"
 
-#define CONTEXT_TYPE 2
+#define CONTEXT_TYPE 0
 #if CONTEXT_TYPE == 0
 #include "kvcontext.h"
 #elif CONTEXT_TYPE == 2
@@ -60,7 +61,7 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 //uint64_t total_count = DEFAULT_KEYS_COUNT;
-uint64_t  total_count=100;
+uint64_t  total_count=10000000;
 
 uint64_t timer_range = default_timer_range;
 
@@ -104,7 +105,7 @@ void simpleInsert1() {
         }
     };
     //store.StartSession();
-        for (int i = 60; i < total_count; i++) {
+        for (int i = 0; i < total_count; i++) {
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<UpsertContext> context{ctxt};
             };
@@ -129,6 +130,24 @@ void simpleInsert1() {
     // Deregister thread from FASTER
     //store.StopSession();
     cout << inserted << " " << tracer.getRunTime() << endl;
+}
+
+void simpleRead(){
+    uint64_t  hit=0;
+    uint64_t  fail=0;
+    for (int i = 75; i < total_count; i++) {
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<ReadContext> context{ctxt};
+        };
+        ReadContext context{loads[i]};
+
+        Status result = store.Read(context, callback, 1);
+        if (result == Status::Ok)
+            hit++;
+        else
+            fail++;
+    }
+    cout<<hit<<" "<<fail<<endl;
 }
 
 void simpleInsert() {
@@ -242,7 +261,7 @@ void Populate() {
             CallbackContext<UpsertContext> context{ctxt};
         };
 #if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{loads[idx], loads[idx]};
 #elif CONTEXT_TYPE == 2
         UpsertContext context(loads[idx], 8);
         context.reset((uint8_t *) (content + idx));
@@ -269,8 +288,6 @@ void *insertWorker(void *args) {
     struct target *work = (struct target *) args;
     int k=work->tid;
     for (int i = k*total_count/thread_number; i < (k+1)*total_count/thread_number; i++) {
-       if(k==0)
-           break;
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
@@ -375,9 +392,9 @@ void *measureWorker(void *args) {
                    Thread::id(), persistent_serial_num);
         }
     };
-   store.StartSession();
+   //store.StartSession();
   //  while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = cd*k/4; i < cd*(k+1)/4; i++) {
+        for (int i = k*total_count/thread_number; i < (k+1)*total_count/thread_number; i++) {
 #if TEST_LOOKUP
             auto callback = [](IAsyncContext *ctxt, Status result) {
                 CallbackContext<ReadContext> context{ctxt};
@@ -416,12 +433,13 @@ void *measureWorker(void *args) {
             else
                 hit++;
 #endif
+            /*
             if (i % kCompletePendingInterval == 0) {
                 store.CompletePending(false);
             } else if (i % kRefreshInterval == 0) {
                 store.Refresh();
             }
-            /*
+
             if (i % kCheckpointInterval == 0) {
                 Guid token;
                 if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
@@ -430,7 +448,7 @@ void *measureWorker(void *args) {
             */
         }
   //  }
-  store.StopSession();
+  //store.StopSession();
     //long elipsed;
     long elipsed= tracer.getRunTime();
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
@@ -479,7 +497,7 @@ void multiWorkers() {
     output = new stringstream[thread_number];
     Tracer tracer;
     tracer.startTime();
-
+    /*
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, insertWorker, &parms[i]);
     }
@@ -487,7 +505,8 @@ void multiWorkers() {
         pthread_join(workers[i], nullptr);
     }
     cout << "Insert " << exists << " " << tracer.getRunTime() << endl;
-    /*
+    */
+
     Timer timer;
     timer.start();
     for (int i = 0; i < thread_number; i++) {
@@ -502,7 +521,6 @@ void multiWorkers() {
         string outstr = output[i].str();
         cout << outstr;
     }
-     */
     cout << "Gathering ..." << endl;
 }
 
@@ -523,8 +541,12 @@ int main(int argc, char **argv) {
     //simpleInsert1();
     thread_number=4;
     multiWorkers();
-    cout<<"simple insert"<<endl;
-    simpleInsert1();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+    //cout<<"simple insert"<<endl;
+    //simpleInsert1();
+    //cout<<"simple read"<<endl;
+    //simpleRead();
     /*
     rounds=0;
     cd =10000000;
