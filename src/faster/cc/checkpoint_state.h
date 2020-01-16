@@ -39,6 +39,21 @@ public:
         ofb_count = FixedPageAddress::kInvalidAddress;
     }
 
+    /* inline void Initialize(uint32_t version_, uint64_t size_, Address log_begin_address_,
+                           Address checkpoint_start_address_,Address a[],Address b[],int h_size) {
+        version = version_;
+        table_size = size_;
+        log_begin_address = log_begin_address_;
+        checkpoint_start_address = checkpoint_start_address_;
+        num_ht_bytes = 0;
+        num_ofb_bytes = 0;
+        ofb_count = FixedPageAddress::kInvalidAddress;
+        for(int i=0;i<h_size;i++){
+            thlog_begin_address[i]=a[i];
+            thlog_checkpoint_address[i]=b[i];
+        }
+    }
+    */
     inline void Reset() {
         version = 0;
         table_size = 0;
@@ -58,9 +73,12 @@ public:
     Address log_begin_address;
     /// Address as of which this checkpoint was taken.
     Address checkpoint_start_address;
+    Address thlog_begin_address[32];
+    Address thlog_checkpoint_address[32];
+
 };
 
-static_assert(sizeof(IndexMetadata) == 56, "sizeof(IndexMetadata) != 56");
+//static_assert(sizeof(IndexMetadata) == 56, "sizeof(IndexMetadata) != 56");
 
 /// Checkpoint metadata, for the log.
 class LogMetadata {

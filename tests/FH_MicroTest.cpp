@@ -12,7 +12,9 @@
 
 #define CONTEXT_TYPE 0
 #if CONTEXT_TYPE == 0
+
 #include "kvcontext.h"
+
 #elif CONTEXT_TYPE == 2
 
 #include "cvkvcontext.h"
@@ -61,7 +63,7 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 //uint64_t total_count = DEFAULT_KEYS_COUNT;
-uint64_t  total_count=10000000;
+uint64_t total_count = 100000000;
 
 uint64_t timer_range = default_timer_range;
 
@@ -69,12 +71,12 @@ uint64_t kCheckpointInterval = 1 << 20;
 uint64_t kRefreshInterval = 1 << 8;
 uint64_t kCompletePendingInterval = 1 << 12;
 Guid retoken;
-int cd=0;
-int rounds=0;
+int cd = 0;
+int rounds = 0;
 int thread_number = DEFAULT_THREAD_NUM;
 
 //int key_range = DEFAULT_KEYS_RANGE;
-int key_range = 100000000;
+int key_range = 1000000000;
 
 stringstream *output;
 
@@ -105,18 +107,21 @@ void simpleInsert1() {
         }
     };
     //store.StartSession();
-        for (int i = 0; i < total_count; i++) {
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<UpsertContext> context{ctxt};
-            };
+    for (int i = 0; i < total_count; i++) {
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<UpsertContext> context{ctxt};
+        };
+        if (i == 1398097) {
+            int te = 0;
+        }
 #if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{loads[i], loads[i]};
 #elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
 #endif
-            Status stat = store.Upsert(context, callback, 1);
-            inserted++;
+        Status stat = store.Upsert(context, callback, 1);
+        inserted++;
 /*
             if (i % kCompletePendingInterval == 0) {
                 store.CompletePending(false);
@@ -124,7 +129,7 @@ void simpleInsert1() {
                 store.Refresh();
             }
 */
-        }
+    }
 
     //store.CompletePending(true);
     // Deregister thread from FASTER
@@ -132,14 +137,14 @@ void simpleInsert1() {
     cout << inserted << " " << tracer.getRunTime() << endl;
 }
 
-void simpleRead(){
-    uint64_t  hit=0;
-    uint64_t  fail=0;
-    for (int i = 75; i < total_count; i++) {
+void simpleRead() {
+    uint64_t hit = 0;
+    uint64_t fail = 0;
+    for (uint64_t i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<ReadContext> context{ctxt};
         };
-        ReadContext context{loads[i]};
+        ReadContext context{i};
 
         Status result = store.Read(context, callback, 1);
         if (result == Status::Ok)
@@ -147,7 +152,7 @@ void simpleRead(){
         else
             fail++;
     }
-    cout<<hit<<" "<<fail<<endl;
+    cout << hit << " " << fail << endl;
 }
 
 void simpleInsert() {
@@ -165,47 +170,47 @@ void simpleInsert() {
         }
     };
     store.StartSession();
-        for (int i = 0; i < total_count; i++) {
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<UpsertContext> context{ctxt};
-            };
+    for (int i = 0; i < total_count; i++) {
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<UpsertContext> context{ctxt};
+        };
 #if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{loads[i], loads[i]};
 #elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
 #endif
-            Status stat = store.Upsert(context, callback, 1);
-            inserted++;
+        Status stat = store.Upsert(context, callback, 1);
+        inserted++;
 
-            if (i % kCheckpointInterval == 0 && i != 0 && j == 0) {
-                Guid token;
-                cout<<"checkpoint start in"<<i<<endl;
-                //if(store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+        if (i % kCheckpointInterval == 0 && i != 0 && j == 0) {
+            Guid token;
+            cout << "checkpoint start in" << i << endl;
+            if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
                 //    if(store.CheckpointIndex(nullptr,token))
                 //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
-                    //if(store.CheckpointIndex(nullptr,token))
-                {
-                    if (j == 0)
-                        printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
-                    j++;
-                }
+                //if(store.CheckpointIndex(nullptr,token))
+            {
+                if (j == 0)
+                    printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
+                j++;
             }
-            if (i % kCompletePendingInterval == 0) {
-                store.CompletePending(false);
-            } else if (i % kRefreshInterval == 0) {
-                store.Refresh();
-                if (j == 1 && store.CheckpointCheck()) {
-                    cout << i << endl;
-                    cd = i;
-                    break;
-                }
-            }
-
         }
+        if (i % kCompletePendingInterval == 0) {
+            store.CompletePending(false);
+        } else if (i % kRefreshInterval == 0) {
+            store.Refresh();
+            if (j == 1 && store.CheckpointCheck()) {
+                cout << i << endl;
+                cd = i;
+                break;
+            }
+        }
+
+    }
     //store.CompletePending(true);
     // Deregister thread from FASTER
-    //store.StopSession();
+    store.StopSession();
     cout << inserted << " " << tracer.getRunTime() << endl;
 }
 
@@ -223,11 +228,11 @@ void RecoverAndTest(const Guid &index_token, const Guid &hybrid_log_token) {
 #if CONTEXT_TYPE == 0
         ReadContext context{loads[i]};
 
-                Status result = store.Read(context, callback, 1);
-                if (result == Status::Ok)
-                    hit++;
-                else
-                    fail++;
+        Status result = store.Read(context, callback, 1);
+        if (result == Status::Ok)
+            hit++;
+        else
+            fail++;
 #elif CONTEXT_TYPE == 2
         ReadContext context(loads[i]);
 
@@ -269,8 +274,8 @@ void Populate() {
 
         if (idx % kCheckpointInterval == 0) {
             Guid token;
-           // if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-                //printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
+            // if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+            //printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
         }
     }
     // Make sure operations are completed
@@ -286,8 +291,8 @@ void *insertWorker(void *args) {
     //struct target *work = (struct target *) args;
     uint64_t inserted = 0;
     struct target *work = (struct target *) args;
-    int k=work->tid;
-    for (int i = k*total_count/thread_number; i < (k+1)*total_count/thread_number; i++) {
+    int k = work->tid;
+    for (int i = k * total_count / thread_number; i < (k + 1) * total_count / thread_number; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
@@ -302,11 +307,12 @@ void *insertWorker(void *args) {
     }
     __sync_fetch_and_add(&exists, inserted);
 }
-void *checkWorker(void *args){
+
+void *checkWorker(void *args) {
     int inserted = 0;
     int j = 0;
     struct target *work = (struct target *) args;
-    int k=work->tid;
+    int k = work->tid;
     auto hybrid_log_persistence_callback = [](Status result, uint64_t persistent_serial_num) {
         if (result != Status::Ok) {
             printf("Thread %" PRIu32 " reports checkpoint failed.\n",
@@ -318,52 +324,54 @@ void *checkWorker(void *args){
     };
     store.StartSession();
     s:
-        for (int i = 0; i < total_count; i++) {
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<UpsertContext> context{ctxt};
-            };
+    for (int i = 0; i < total_count; i++) {
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<UpsertContext> context{ctxt};
+        };
 #if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{loads[i], loads[i]};
 #elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
 #endif
-            Status stat = store.Upsert(context, callback, i);
-            inserted++;
-            int excepcted=0;
-            if (i % kCheckpointInterval == 0 && i != 0 && stopMeasure.compare_exchange_strong(excepcted,1)) {
-                Guid token;
-                cout << "checkpoint start in" << i << endl;
-                //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
-                if(store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-               // if(store.CheckpointIndex(nullptr, token))
-                {
-                        printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
-                        cout<<"thread id"<<k<<endl;
-                }
+        Status stat = store.Upsert(context, callback, i);
+        inserted++;
+        int excepcted = 0;
+        if (i % kCheckpointInterval == 0 && i != 0 && stopMeasure.compare_exchange_strong(excepcted, 1)) {
+            Guid token;
+            cout << "checkpoint start in" << i << endl;
+            //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
+            if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+                // if(store.CheckpointIndex(nullptr, token))
+            {
+                printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
+                cout << "thread id" << k << endl;
             }
-            if (i % kCompletePendingInterval == 0) {
-                store.CompletePending(false);
-            } else if (i % kRefreshInterval == 0) {
-                store.Refresh();
-                if (stopMeasure.load() == 1 && store.CheckpointCheck()) {
-                   //cout <<"thread id:"<<k<<" end in"<< i << endl;
-                    j++;
-                    if(j == 2){
-                        j=i;
-                       break;}
+        }
+        if (i % kCompletePendingInterval == 0) {
+            store.CompletePending(false);
+        } else if (i % kRefreshInterval == 0) {
+            store.Refresh();
+            if (stopMeasure.load() == 1 && store.CheckpointCheck()) {
+                //cout <<"thread id:"<<k<<" end in"<< i << endl;
+                j++;
+                if (j == 2) {
+                    j = i;
+                    break;
+                }
 
-                }
             }
         }
-        if(!store.CheckpointCheck()){
-            cout<<work->tid<<"fail"<<endl;
-            //goto s;
-        }
+    }
+    if (!store.CheckpointCheck()) {
+        cout << work->tid << "fail" << endl;
+        //goto s;
+    }
     //store.CompletePending(true);
     store.StopSession();
     output[work->tid] << work->tid << " " << j << endl;
 }
+
 void multiPoints() {
     output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
@@ -376,13 +384,15 @@ void multiPoints() {
     }
     cout << "checkpoint done ..." << endl;
 }
+
 void *measureWorker(void *args) {
     Tracer tracer;
     tracer.startTime();
     struct target *work = (struct target *) args;
     uint64_t hit = 0;
     uint64_t fail = 0;
-    int k=work->tid;
+    long elipsed;
+    uint64_t k = work->tid;
     auto hybrid_log_persistence_callback = [](Status result, uint64_t persistent_serial_num) {
         if (result != Status::Ok) {
             printf("Thread %" PRIu32 " reports checkpoint failed.\n",
@@ -392,69 +402,78 @@ void *measureWorker(void *args) {
                    Thread::id(), persistent_serial_num);
         }
     };
-   //store.StartSession();
-  //  while (stopMeasure.load(memory_order_relaxed) == 0) {
-        for (int i = k*total_count/thread_number; i < (k+1)*total_count/thread_number; i++) {
+    //store.StartSession();
+    //  while (stopMeasure.load(memory_order_relaxed) == 0) {
+    for (uint64_t i = (k + 1) * total_count / thread_number - 10000; i < (k + 1) * total_count / thread_number; i++) {
 #if TEST_LOOKUP
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<ReadContext> context{ctxt};
-            };
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<ReadContext> context{ctxt};
+        };
 #if CONTEXT_TYPE == 0
-            ReadContext context{loads[i]};
+        ReadContext context{loads[i]};
 
-            Status result = store.Read(context, callback, 1);
-            if (result == Status::Ok)
-                hit++;
-            else
-                fail++;
+        Status result = store.Read(context, callback, 1);
+        if (result == Status::Ok)
+            hit++;
+        else
+            fail++;
 #elif CONTEXT_TYPE == 2
-            ReadContext context(loads[i]);
+        ReadContext context(loads[i]);
 
-            Status result = store.Read(context, callback, 1);
-            if (result == Status::Ok && *(uint64_t *) (context.output_bytes) == total_count - loads[i])
-                hit++;
-            else
-                fail++;
+        Status result = store.Read(context, callback, 1);
+        if (result == Status::Ok && *(uint64_t *) (context.output_bytes) == total_count - loads[i])
+            hit++;
+        else
+            fail++;
 #endif
 #else
-            auto callback = [](IAsyncContext *ctxt, Status result) {
-                CallbackContext<UpsertContext> context{ctxt};
-            };
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<UpsertContext> context{ctxt};
+        };
 #if CONTEXT_TYPE == 0
-            UpsertContext context{loads[i], loads[i]};
+        //UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{i, i};
 #elif CONTEXT_TYPE == 2
-            UpsertContext context(loads[i], 8);
-            context.reset((uint8_t *) (content + i));
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
 #endif
 
-            Status stat = store.Upsert(context, callback, 1);
-            if (stat == Status::NotFound)
-                fail++;
-            else
-                hit++;
+        Status stat = store.Upsert(context, callback, 1);
+        if (stat == Status::NotFound)
+            fail++;
+        else
+            hit++;
 #endif
-            /*
-            if (i % kCompletePendingInterval == 0) {
-                store.CompletePending(false);
-            } else if (i % kRefreshInterval == 0) {
-                store.Refresh();
-            }
-
-            if (i % kCheckpointInterval == 0) {
-                Guid token;
-                if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-                    printf("Thread= %d Calling Checkpoint(), token = %s\n", work->tid, token.ToString().c_str());
-            }
-            */
+        /*
+        if (i % kCompletePendingInterval == 0) {
+            store.CompletePending(false);
+        } else if (i % kRefreshInterval == 0) {
+            store.Refresh();
         }
-  //  }
-  //store.StopSession();
+
+        if (i % kCheckpointInterval == 0) {
+            Guid token;
+            if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
+                printf("Thread= %d Calling Checkpoint(), token = %s\n", work->tid, token.ToString().c_str());
+        }
+        */
+        if (i % 1000000 == 0) {
+            elipsed = tracer.getRunTime();
+            __sync_fetch_and_add(&total_time, elipsed);
+            __sync_fetch_and_add(&success, hit);
+            __sync_fetch_and_add(&failure, fail);
+            hit = 0;
+            fail = 0;
+        }
+    }
+    //  }
+    //store.StopSession();
     //long elipsed;
-    long elipsed= tracer.getRunTime();
+    // elipsed= tracer.getRunTime();
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
-    __sync_fetch_and_add(&total_time, elipsed);
-    __sync_fetch_and_add(&success, hit);
-    __sync_fetch_and_add(&failure, fail);
+    //__sync_fetch_and_add(&total_time, elipsed);
+    //__sync_fetch_and_add(&success, hit);
+    //__sync_fetch_and_add(&failure, fail);
 }
 
 void prepare() {
@@ -462,15 +481,17 @@ void prepare() {
     workers = new pthread_t[thread_number];
     parms = new struct target[thread_number];
     output = new stringstream[thread_number];
-    for (int i = 0; i < thread_number; i++) {
+    for (uint64_t i = 0; i < thread_number; i++) {
         parms[i].tid = i;
         parms[i].store = &store;
+        /*
         parms[i].insert = (uint64_t *) calloc(total_count / thread_number, sizeof(uint64_t *));
         char buf[DEFAULT_STR_LENGTH];
         for (int j = 0; j < total_count / thread_number; j++) {
             std::sprintf(buf, "%d", i + j * thread_number);
             parms[i].insert[j] = j;
         }
+        :w*/
     }
 #if CONTEXT_TYPE == 2
     content = new uint64_t[total_count];
@@ -512,10 +533,32 @@ void multiWorkers() {
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
+    double trange = 2;
+    uint64_t old_success = 0;
+    uint64_t old_failule = 0;
+    uint64_t sum = 0;
+    long old_time = 0;
+    while (1) {
+        while (timer.elapsedSeconds() < trange)
+            sleep(1);
+        trange += 2;
+        sum = success + failure;
+        cout << timer.elapsedSeconds() << endl;
+        cout << "total_operation" << sum << "operations: " << (success - old_success) << " failure: "
+             << (failure - old_failule) << " throughput: "
+             << (double) (success + failure - old_success - old_failule) * thread_number / (total_time - old_time)
+             << endl;
+        //cout << total_time << endl;
+        old_time = total_time;
+        old_failule = failure;
+        if (old_success == success)
+            break;
+        old_success = success;
+    }
     //while (timer.elapsedSeconds() < timer_range) {
-   //    sleep(1);
-  //  }
-   // stopMeasure.store(1, memory_order_relaxed);
+    //    sleep(1);
+    //  }
+    // stopMeasure.store(1, memory_order_relaxed);
     for (int i = 0; i < thread_number; i++) {
         pthread_join(workers[i], nullptr);
         string outstr = output[i].str();
@@ -534,19 +577,18 @@ int main(int argc, char **argv) {
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " time: "
          << timer_range << endl;
-    loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
-    UniformGen<uint64_t>::generate(loads, key_range, total_count);
+    //loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
+    //for (int i = 0; i < total_count; i++) loads[i] = i;
+    // UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
-    thread_number=4;
+    //thread_number=4;
     multiWorkers();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
-    //cout<<"simple read"<<endl;
-    //simpleRead();
+    cout << "simple read" << endl;
+    simpleRead();
     /*
     rounds=0;
     cd =10000000;
