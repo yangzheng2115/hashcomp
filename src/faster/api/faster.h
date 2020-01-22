@@ -116,83 +116,83 @@ public:
         static hlog_t a(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 0);
         thlog[0] = &a;
         Address ad = thlog[0]->head_address.load();
-        static hlog_t b(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 1);
+        static hlog_t b(log_size, epoch_, disk, disk.log1(), log_mutable_fraction, 1);
         thlog[1] = &b;
-        static hlog_t c(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 2);
+        static hlog_t c(log_size, epoch_, disk, disk.log2(), log_mutable_fraction, 2);
         thlog[2] = &c;
-        static hlog_t d(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 3);
+        static hlog_t d(log_size, epoch_, disk, disk.log3(), log_mutable_fraction, 3);
         thlog[3] = &d;
-        static hlog_t d1(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 4);
+        static hlog_t d1(log_size, epoch_, disk, disk.tlog(4), log_mutable_fraction, 4);
         thlog[4] = &d1;
-        static hlog_t d2(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 5);
+        static hlog_t d2(log_size, epoch_, disk, disk.tlog(5), log_mutable_fraction, 5);
         thlog[5] = &d2;
-        static hlog_t d3(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 6);
+        static hlog_t d3(log_size, epoch_, disk, disk.tlog(6), log_mutable_fraction, 6);
         thlog[6] = &d3;
-        static hlog_t d4(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 7);
+        static hlog_t d4(log_size, epoch_, disk, disk.tlog(7), log_mutable_fraction, 7);
         thlog[7] = &d4;
-        static hlog_t d5(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 8);
+        static hlog_t d5(log_size, epoch_, disk, disk.tlog(8), log_mutable_fraction, 8);
         thlog[8] = &d5;
-        static hlog_t d6(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 9);
+        static hlog_t d6(log_size, epoch_, disk, disk.tlog(9), log_mutable_fraction, 9);
         thlog[9] = &d6;
-        static hlog_t d7(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 10);
+        static hlog_t d7(log_size, epoch_, disk, disk.tlog(10), log_mutable_fraction, 10);
         thlog[10] = &d7;
-        static hlog_t d8(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 11);
+        static hlog_t d8(log_size, epoch_, disk, disk.tlog(11), log_mutable_fraction, 11);
         thlog[11] = &d8;
-        static hlog_t d9(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 12);
+        static hlog_t d9(log_size, epoch_, disk, disk.tlog(12), log_mutable_fraction, 12);
         thlog[12] = &d9;
-        static hlog_t d10(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 13);
+        static hlog_t d10(log_size, epoch_, disk, disk.tlog(13), log_mutable_fraction, 13);
         thlog[13] = &d10;
-        static hlog_t d11(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 14);
+        static hlog_t d11(log_size, epoch_, disk, disk.tlog(14), log_mutable_fraction, 14);
         thlog[14] = &d11;
-        static hlog_t d12(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 15);
+        static hlog_t d12(log_size, epoch_, disk, disk.tlog(15), log_mutable_fraction, 15);
         thlog[15] = &d12;
-        static hlog_t d13(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 16);
+        static hlog_t d13(log_size, epoch_, disk, disk.tlog(16), log_mutable_fraction, 16);
         thlog[16] = &d13;
-        static hlog_t d14(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 17);
+        static hlog_t d14(log_size, epoch_, disk, disk.tlog(17), log_mutable_fraction, 17);
         thlog[17] = &d14;
-        static hlog_t d15(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 18);
+        static hlog_t d15(log_size, epoch_, disk, disk.tlog(18), log_mutable_fraction, 18);
         thlog[18] = &d15;
-        static hlog_t d16(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 19);
+        static hlog_t d16(log_size, epoch_, disk, disk.tlog(19), log_mutable_fraction, 19);
         thlog[19] = &d16;
-        static hlog_t d17(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 20);
+        static hlog_t d17(log_size, epoch_, disk, disk.tlog(20), log_mutable_fraction, 20);
         thlog[20] = &d17;
-        static hlog_t d18(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 21);
+        static hlog_t d18(log_size, epoch_, disk, disk.tlog(21), log_mutable_fraction, 21);
         thlog[21] = &d18;
-        static hlog_t d19(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 22);
+        static hlog_t d19(log_size, epoch_, disk, disk.tlog(22), log_mutable_fraction, 22);
         thlog[22] = &d19;
-        static hlog_t d20(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 23);
+        static hlog_t d20(log_size, epoch_, disk, disk.tlog(23), log_mutable_fraction, 23);
         thlog[23] = &d20;
-        static hlog_t d21(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 24);
+        static hlog_t d21(log_size, epoch_, disk, disk.tlog(24), log_mutable_fraction, 24);
         thlog[24] = &d21;
-        static hlog_t d22(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 25);
+        static hlog_t d22(log_size, epoch_, disk, disk.tlog(25), log_mutable_fraction, 25);
         thlog[25] = &d22;
-        static hlog_t d23(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 26);
+        static hlog_t d23(log_size, epoch_, disk, disk.tlog(26), log_mutable_fraction, 26);
         thlog[26] = &d23;
-        static hlog_t d24(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 27);
+        static hlog_t d24(log_size, epoch_, disk, disk.tlog(27), log_mutable_fraction, 27);
         thlog[27] = &d24;
-        static hlog_t d25(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 28);
+        static hlog_t d25(log_size, epoch_, disk, disk.tlog(28), log_mutable_fraction, 28);
         thlog[28] = &d25;
-        static hlog_t d26(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 29);
+        static hlog_t d26(log_size, epoch_, disk, disk.tlog(29), log_mutable_fraction, 29);
         thlog[29] = &d26;
-        static hlog_t d27(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 30);
+        static hlog_t d27(log_size, epoch_, disk, disk.tlog(30), log_mutable_fraction, 30);
         thlog[30] = &d27;
-        static hlog_t d28(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 31);
+        static hlog_t d28(log_size, epoch_, disk, disk.tlog(31), log_mutable_fraction, 31);
         thlog[31] = &d28;
-        static hlog_t d29(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 32);
+        static hlog_t d29(log_size, epoch_, disk, disk.tlog(32), log_mutable_fraction, 32);
         thlog[32] = &d29;
-        static hlog_t d30(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 33);
+        static hlog_t d30(log_size, epoch_, disk, disk.tlog(33), log_mutable_fraction, 33);
         thlog[33] = &d30;
-        static hlog_t d31(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 34);
+        static hlog_t d31(log_size, epoch_, disk, disk.tlog(34), log_mutable_fraction, 34);
         thlog[34] = &d31;
-        static hlog_t d32(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 35);
+        static hlog_t d32(log_size, epoch_, disk, disk.tlog(35), log_mutable_fraction, 35);
         thlog[35] = &d32;
-        static hlog_t d33(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 36);
+        static hlog_t d33(log_size, epoch_, disk, disk.tlog(36), log_mutable_fraction, 36);
         thlog[36] = &d33;
-        static hlog_t d34(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 37);
+        static hlog_t d34(log_size, epoch_, disk, disk.tlog(37), log_mutable_fraction, 37);
         thlog[37] = &d34;
-        static hlog_t d35(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 38);
+        static hlog_t d35(log_size, epoch_, disk, disk.tlog(38), log_mutable_fraction, 38);
         thlog[38] = &d35;
-        static hlog_t d36(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 39);
+        static hlog_t d36(log_size, epoch_, disk, disk.tlog(39), log_mutable_fraction, 39);
         thlog[39] = &d36;
         if (!Utility::IsPowerOfTwo(table_size)) {
             throw std::invalid_argument{" Size is not a power of 2"};
@@ -955,7 +955,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
         HeavyEnter();
     }
     //cout<<Thread::id()<<endl;
-    uint16_t j = Thread::id() % 40;
+    uint16_t j = Thread::id() % 4;
     //j=1;
     const key_t &key = pending_context.key();
     KeyHash hash = key.GetHash();
@@ -2458,9 +2458,21 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                     // WAIT_PENDING -> WAIT_FLUSH
                     if (fold_over_snapshot) {
                         // Move read-only to tail
-                        Address tail_address = hlog.ShiftReadOnlyToTail();
+                        Address tail_address;
+                        Address read_only_address;
+                        //Address tail_address = hlog.ShiftReadOnlyToTail();
                         // Get final address for CPR
                         checkpoint_.log_metadata.final_address = tail_address;
+                        for (int i = 0; i < 32; i++) {
+                            if (thlog[i]->GetTailAddress().page() == thlog[i]->read_only_address.page() &&
+                                thlog[i]->GetTailAddress().offset()==thlog[i]->read_only_address.offset())
+                                continue;
+                            else{
+                                read_only_address=thlog[i]->read_only_address.load();
+                                tail_address=thlog[i]->GetTailAddress();
+                                thlog[i]->ShiftReadOnlyToTail();
+                            }
+                        }
                     } else {
                         Address tail_address = hlog.GetTailAddress();
                         // Get final address for CPR

@@ -220,6 +220,20 @@ namespace FASTER {
                       file_options_{file_options}, epoch_{epoch} {
             }
 
+            FileSystemSegmentedFile(){
+
+            }
+
+            FileSystemSegmentedFile &operator=(const FileSystemSegmentedFile &other) {
+                begin_segment_=other.begin_segment_;
+                files_=other.files_;
+                handler_=other.handler_;
+                filename_=other.filename_;
+                file_options_=other.file_options_;
+                epoch_=other.epoch_;
+                return *this;
+            }
+
             ~FileSystemSegmentedFile() {
                 bundle_t *files = files_.load();
                 if (files) {
@@ -442,8 +456,16 @@ namespace FASTER {
                            bool unbuffered = true, bool delete_on_close = false)
                     : root_path_{NormalizePath(root_path)}, handler_{16 /*max threads*/ },
                       default_file_options_{unbuffered, delete_on_close},
-                      log_{root_path_ + "log.log", default_file_options_, &epoch} {
+                      log_{root_path_ + "tlog.log", default_file_options_, &epoch},log_1{root_path_ + std::to_string(1)+"log.log", default_file_options_, &epoch},
+                      log_2{root_path_ + "tlog2.log", default_file_options_, &epoch},log_3{root_path_ + "tlog3.log", default_file_options_, &epoch} {
+                      for (int i=0;i<40;i++){
+                          log_t[i]=new log_file_t(root_path_ + std::to_string(i)+"log.log", default_file_options_, &epoch);
+                          log_t[i]->Open(&handler_);
+                      }
                 Status result = log_.Open(&handler_);
+                log_1.Open(&handler_);
+                log_2.Open(&handler_);
+                log_3.Open(&handler_);
                 assert(result == Status::Ok);
             }
 
@@ -458,6 +480,22 @@ namespace FASTER {
 
             log_file_t &log() {
                 return log_;
+            }
+
+            log_file_t &log1() {
+                return log_1;
+            }
+
+            log_file_t &log2() {
+                return log_2;
+            }
+
+            log_file_t &log3() {
+                return log_3;
+            }
+
+            log_file_t &tlog(int i){
+                return  *log_t[i];
             }
 
             std::string relative_index_checkpoint_path(const Guid &token) const {
@@ -527,6 +565,10 @@ namespace FASTER {
 
             /// Store the log (contains all records).
             log_file_t log_;
+            log_file_t log_1;
+            log_file_t log_2;
+            log_file_t log_3;
+            log_file_t *log_t[40];
         };
 
     }

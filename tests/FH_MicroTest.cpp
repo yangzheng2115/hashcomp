@@ -21,7 +21,7 @@
 
 #endif
 
-#define DEFAULT_THREAD_NUM (4)
+#define DEFAULT_THREAD_NUM (2)
 #define DEFAULT_KEYS_COUNT (1 << 23)
 #define DEFAULT_KEYS_RANGE (1 << 30)
 
@@ -63,7 +63,7 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 //uint64_t total_count = DEFAULT_KEYS_COUNT;
-uint64_t total_count = 100000000;
+uint64_t total_count = 10000000;
 
 uint64_t timer_range = default_timer_range;
 
@@ -187,7 +187,7 @@ void simpleInsert() {
             Guid token;
             cout << "checkpoint start in" << i << endl;
             if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-                //    if(store.CheckpointIndex(nullptr,token))
+                //if(store.CheckpointIndex(nullptr,token))
                 //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
                 //if(store.CheckpointIndex(nullptr,token))
             {
@@ -219,7 +219,7 @@ void RecoverAndTest(const Guid &index_token, const Guid &hybrid_log_token) {
     uint64_t hit = 0;
     uint64_t fail = 0;
     std::vector<Guid> session_ids;
-    //store.Recover(index_token, hybrid_log_token, version, session_ids);
+    store.Recover(index_token, hybrid_log_token, version, session_ids);
     cout << "recover successful" << endl;
     for (int i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
@@ -324,12 +324,12 @@ void *checkWorker(void *args) {
     };
     store.StartSession();
     s:
-    for (int i = 0; i < total_count; i++) {
+    for (uint64_t  i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
 #if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{i, i};
 #elif CONTEXT_TYPE == 2
         UpsertContext context(loads[i], 8);
         context.reset((uint8_t *) (content + i));
@@ -342,7 +342,7 @@ void *checkWorker(void *args) {
             cout << "checkpoint start in" << i << endl;
             //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
             if (store.Checkpoint(nullptr, hybrid_log_persistence_callback, token))
-                // if(store.CheckpointIndex(nullptr, token))
+            // if(store.CheckpointIndex(nullptr, token))
             {
                 printf("Calling Checkpoint(), token = %s\n", token.ToString().c_str());
                 cout << "thread id" << k << endl;
@@ -369,9 +369,8 @@ void *checkWorker(void *args) {
     }
     //store.CompletePending(true);
     store.StopSession();
-    output[work->tid] << work->tid << " " << j << endl;
+    //output[work->tid] << work->tid << " " << j << endl;
 }
-
 void multiPoints() {
     output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
@@ -379,8 +378,8 @@ void multiPoints() {
     }
     for (int i = 0; i < thread_number; i++) {
         pthread_join(workers[i], nullptr);
-        string outstr = output[i].str();
-        cout << outstr;
+       // string outstr = output[i].str();
+        //cout << outstr;
     }
     cout << "checkpoint done ..." << endl;
 }
@@ -402,9 +401,9 @@ void *measureWorker(void *args) {
                    Thread::id(), persistent_serial_num);
         }
     };
-    //store.StartSession();
+    store.StartSession();
     //  while (stopMeasure.load(memory_order_relaxed) == 0) {
-    for (uint64_t i = (k + 1) * total_count / thread_number - 10000; i < (k + 1) * total_count / thread_number; i++) {
+    for (uint64_t i = (k) * total_count / thread_number; i < (k + 1) * total_count / thread_number; i++) {
 #if TEST_LOOKUP
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<ReadContext> context{ctxt};
@@ -457,23 +456,15 @@ void *measureWorker(void *args) {
                 printf("Thread= %d Calling Checkpoint(), token = %s\n", work->tid, token.ToString().c_str());
         }
         */
-        if (i % 1000000 == 0) {
-            elipsed = tracer.getRunTime();
-            __sync_fetch_and_add(&total_time, elipsed);
-            __sync_fetch_and_add(&success, hit);
-            __sync_fetch_and_add(&failure, fail);
-            hit = 0;
-            fail = 0;
-        }
     }
     //  }
-    //store.StopSession();
+    store.StopSession();
     //long elipsed;
-    // elipsed= tracer.getRunTime();
+    elipsed= tracer.getRunTime();
     output[work->tid] << work->tid << " " << elipsed << " " << hit << endl;
-    //__sync_fetch_and_add(&total_time, elipsed);
-    //__sync_fetch_and_add(&success, hit);
-    //__sync_fetch_and_add(&failure, fail);
+    __sync_fetch_and_add(&total_time, elipsed);
+    __sync_fetch_and_add(&success, hit);
+    __sync_fetch_and_add(&failure, fail);
 }
 
 void prepare() {
@@ -484,14 +475,14 @@ void prepare() {
     for (uint64_t i = 0; i < thread_number; i++) {
         parms[i].tid = i;
         parms[i].store = &store;
-        /*
+
         parms[i].insert = (uint64_t *) calloc(total_count / thread_number, sizeof(uint64_t *));
         char buf[DEFAULT_STR_LENGTH];
         for (int j = 0; j < total_count / thread_number; j++) {
             std::sprintf(buf, "%d", i + j * thread_number);
             parms[i].insert[j] = j;
         }
-        :w*/
+
     }
 #if CONTEXT_TYPE == 2
     content = new uint64_t[total_count];
@@ -533,28 +524,6 @@ void multiWorkers() {
     for (int i = 0; i < thread_number; i++) {
         pthread_create(&workers[i], nullptr, measureWorker, &parms[i]);
     }
-    double trange = 2;
-    uint64_t old_success = 0;
-    uint64_t old_failule = 0;
-    uint64_t sum = 0;
-    long old_time = 0;
-    while (1) {
-        while (timer.elapsedSeconds() < trange)
-            sleep(1);
-        trange += 2;
-        sum = success + failure;
-        cout << timer.elapsedSeconds() << endl;
-        cout << "total_operation" << sum << "operations: " << (success - old_success) << " failure: "
-             << (failure - old_failule) << " throughput: "
-             << (double) (success + failure - old_success - old_failule) * thread_number / (total_time - old_time)
-             << endl;
-        //cout << total_time << endl;
-        old_time = total_time;
-        old_failule = failure;
-        if (old_success == success)
-            break;
-        old_success = success;
-    }
     //while (timer.elapsedSeconds() < timer_range) {
     //    sleep(1);
     //  }
@@ -577,18 +546,40 @@ int main(int argc, char **argv) {
     }
     cout << " threads: " << thread_number << " range: " << key_range << " count: " << total_count << " time: "
          << timer_range << endl;
-    //loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
+    loads = (uint64_t *) calloc(total_count, sizeof(uint64_t));
     //for (int i = 0; i < total_count; i++) loads[i] = i;
-    // UniformGen<uint64_t>::generate(loads, key_range, total_count);
+    UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
+   // simpleInsert();
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
-    //thread_number=4;
     multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+    success=0;
+    failure=0;
+    total_time=0;
+    multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+    stopMeasure.store(0);
+    multiPoints();
+    success=0;
+    failure=0;
+    total_time=0;
+    multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
+    success=0;
+    failure=0;
+    total_time=0;
+    multiWorkers();
+    cout << "operations: " << success << " failure: " << failure << " throughput: "
+         << (double) (success + failure) * thread_number / total_time << endl;
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
-    cout << "simple read" << endl;
-    simpleRead();
+    //cout << "simple read" << endl;
+    //simpleRead();
     /*
     rounds=0;
     cd =10000000;

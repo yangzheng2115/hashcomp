@@ -39,7 +39,7 @@ public:
         ofb_count = FixedPageAddress::kInvalidAddress;
     }
 
-    /* inline void Initialize(uint32_t version_, uint64_t size_, Address log_begin_address_,
+    inline void Initialize1(uint32_t version_, uint64_t size_, Address log_begin_address_,
                            Address checkpoint_start_address_,Address a[],Address b[],int h_size) {
         version = version_;
         table_size = size_;
@@ -53,7 +53,7 @@ public:
             thlog_checkpoint_address[i]=b[i];
         }
     }
-    */
+
     inline void Reset() {
         version = 0;
         table_size = 0;
@@ -73,8 +73,8 @@ public:
     Address log_begin_address;
     /// Address as of which this checkpoint was taken.
     Address checkpoint_start_address;
-    Address thlog_begin_address[32];
-    Address thlog_checkpoint_address[32];
+    Address thlog_begin_address[40];
+    Address thlog_checkpoint_address[40];
 
 };
 

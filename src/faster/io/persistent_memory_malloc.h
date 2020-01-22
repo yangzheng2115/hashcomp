@@ -659,6 +659,8 @@ inline void PersistentMemoryMalloc<D>::AsyncGetFromDisk(Address address, uint32_
 template<class D>
 Address PersistentMemoryMalloc<D>::ShiftReadOnlyToTail() {
     Address tail_address = GetTailAddress();
+    uint16_t h=read_only_address.load().h();
+    tail_address+=Address{0,0,h}.control();
     Address old_read_only_address;
     if (MonotonicUpdate(read_only_address, tail_address, old_read_only_address)) {
         OnPagesMarkedReadOnly_Context context{this, tail_address, false};
