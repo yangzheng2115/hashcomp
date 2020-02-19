@@ -314,6 +314,9 @@ public:
         safe_read_only_address.store(tail_address);
         head_address.store(tail_address);
         safe_head_address.store(tail_address);
+        Address flush_address=flushed_until_address.load();
+        flush_address += Address{0, 0, i}.control();
+        flushed_until_address.store(flush_address);
     }
 
     /*
@@ -358,8 +361,13 @@ public:
     /// Read the tail page + offset, atomically, and convert it to an address.
     inline Address GetTailAddress() const {
         PageOffset tail_page_offset = tail_page_offset_.load();
-        return Address{tail_page_offset.page(), std::min(Address::kMaxOffset,
-                                                         static_cast<uint32_t>(tail_page_offset.offset()))};
+        Address tail_address;
+        uint32_t i=read_only_address.load().h();
+        Address a = Address{0, 0, i};
+        tail_address=Address{tail_page_offset.page(), std::min(Address::kMaxOffset,
+                                                               static_cast<uint32_t>(tail_page_offset.offset()))};
+        tail_address += Address{0, 0, i}.control();
+        return tail_address;
     }
 
     inline const uint8_t *Get(Address address) const {
@@ -660,7 +668,7 @@ template<class D>
 Address PersistentMemoryMalloc<D>::ShiftReadOnlyToTail() {
     Address tail_address = GetTailAddress();
     uint16_t h=read_only_address.load().h();
-    tail_address+=Address{0,0,h}.control();
+    //tail_address+=Address{0,0,h}.control();
     Address old_read_only_address;
     if (MonotonicUpdate(read_only_address, tail_address, old_read_only_address)) {
         OnPagesMarkedReadOnly_Context context{this, tail_address, false};
@@ -718,6 +726,10 @@ void PersistentMemoryMalloc<D>::OnPagesMarkedReadOnly(IAsyncContext *ctxt) {
                                             old_safe_read_only_address)) {
         context->allocator->AsyncFlushPages(old_safe_read_only_address.page(),    //设置断点
                                             context->new_safe_read_only_address);
+    }
+    if(context->allocator->read_only_address.load().h()==1){
+        Address a=context->allocator->flushed_until_address.load();
+        Address b=context->new_safe_read_only_address;
     }
 }
 
@@ -779,7 +791,8 @@ Status PersistentMemoryMalloc<D>::AsyncFlushPages(uint32_t start_page, Address u
     for (uint32_t flush_page = start_page; flush_page < start_page + num_pages; ++flush_page) {
         Address page_start_address{flush_page, 0};
         Address page_end_address{flush_page + 1, 0};
-
+        uint16_t k=read_only_address.load().h();
+        page_end_address += Address{0, 0, k}.control();
         Context context{this, flush_page, std::min(page_end_address, until_address)};
 
         //Set status to in-progress

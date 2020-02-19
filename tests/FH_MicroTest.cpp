@@ -21,7 +21,7 @@
 
 #endif
 
-#define DEFAULT_THREAD_NUM (2)
+#define DEFAULT_THREAD_NUM (4)
 #define DEFAULT_KEYS_COUNT (1 << 23)
 #define DEFAULT_KEYS_RANGE (1 << 30)
 
@@ -63,7 +63,7 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 //uint64_t total_count = DEFAULT_KEYS_COUNT;
-uint64_t total_count = 10000000;
+uint64_t total_count = 100000000;
 
 uint64_t timer_range = default_timer_range;
 
@@ -221,13 +221,12 @@ void RecoverAndTest(const Guid &index_token, const Guid &hybrid_log_token) {
     std::vector<Guid> session_ids;
     store.Recover(index_token, hybrid_log_token, version, session_ids);
     cout << "recover successful" << endl;
-    for (int i = 0; i < total_count; i++) {
+    for (uint64_t i = 0; i < total_count+100000; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<ReadContext> context{ctxt};
         };
 #if CONTEXT_TYPE == 0
-        ReadContext context{loads[i]};
-
+        ReadContext context{i};
         Status result = store.Read(context, callback, 1);
         if (result == Status::Ok)
             hit++;
@@ -334,7 +333,9 @@ void *checkWorker(void *args) {
         UpsertContext context(loads[i], 8);
         context.reset((uint8_t *) (content + i));
 #endif
-        Status stat = store.Upsert(context, callback, i);
+        store.Refresh1();
+        //Status stat = store.Upsert(context, callback, i);
+        Status stat = store.UpsertT(context, callback, i,thread_number);
         inserted++;
         int excepcted = 0;
         if (i % kCheckpointInterval == 0 && i != 0 && stopMeasure.compare_exchange_strong(excepcted, 1)) {
@@ -351,7 +352,7 @@ void *checkWorker(void *args) {
         if (i % kCompletePendingInterval == 0) {
             store.CompletePending(false);
         } else if (i % kRefreshInterval == 0) {
-            store.Refresh();
+            store.Refresh2();
             if (stopMeasure.load() == 1 && store.CheckpointCheck()) {
                 //cout <<"thread id:"<<k<<" end in"<< i << endl;
                 j++;
@@ -437,7 +438,8 @@ void *measureWorker(void *args) {
         context.reset((uint8_t *) (content + i));
 #endif
 
-        Status stat = store.Upsert(context, callback, 1);
+        //Status stat = store.Upsert(context, callback, 1);
+        Status stat = store.UpsertT(context, callback, 1,thread_number);
         if (stat == Status::NotFound)
             fail++;
         else
@@ -550,29 +552,23 @@ int main(int argc, char **argv) {
     //for (int i = 0; i < total_count; i++) loads[i] = i;
     UniformGen<uint64_t>::generate(loads, key_range, total_count);
     prepare();
-   // simpleInsert();
+    if (argc>5){
+        //string str= reinterpret_cast<const char *>(std::atol(argv[5]));
+        Guid token = Guid::Parse(argv[5]);
+        RecoverAndTest(token,token);
+        goto y;
+    }
+    // simpleInsert();
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
+    cout << "multiinsert" << endl;
     multiWorkers();
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
     success=0;
     failure=0;
     total_time=0;
-    multiWorkers();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
-    stopMeasure.store(0);
-    multiPoints();
-    success=0;
-    failure=0;
-    total_time=0;
-    multiWorkers();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
-    success=0;
-    failure=0;
-    total_time=0;
+    cout << "multiinsert" << endl;
     multiWorkers();
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
@@ -580,20 +576,6 @@ int main(int argc, char **argv) {
     //simpleInsert1();
     //cout << "simple read" << endl;
     //simpleRead();
-    /*
-    rounds=0;
-    cd =10000000;
-    cout << "multiinsert" << endl;
-    success=0;
-    failure=0;
-    total_time=0;
-    multiWorkers();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
-
-
-    stopMeasure.store(0);
-    multiPoints();
 
     for(int i=0;i<rounds;i++) {
 
@@ -601,8 +583,7 @@ int main(int argc, char **argv) {
         multiPoints();
         //RecoverAndTest(retoken, retoken);
         // Populate();
-        cd = 1000000;
-        cout << "multiinsert" << endl;
+        cout << "after checkpoint multiinsert" << endl;
         success = 0;
         failure = 0;
         total_time = 0;
@@ -619,7 +600,8 @@ int main(int argc, char **argv) {
              << (double) (success + failure) * thread_number / total_time << endl;
 
     }
-    */
+
+    y:
     free(loads);
     finish();
     return 0;

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstring>
 #include <type_traits>
+#include <src/faster/cc/checkpoint_state.h>
 
 
 #include "../misc/alloc.h"
@@ -113,14 +114,14 @@ public:
         // hlog{log_size, epoch_, disk, disk.log(), log_mutable_fraction,1},
         //hlog_t a[4];
         //for(uint32_t i=0;i<4;i++){
-        static hlog_t a(log_size, epoch_, disk, disk.log(), log_mutable_fraction, 0);
+        static hlog_t a(log_size, epoch_, disk, disk.tlog(0), log_mutable_fraction, 0);
         thlog[0] = &a;
         Address ad = thlog[0]->head_address.load();
-        static hlog_t b(log_size, epoch_, disk, disk.log1(), log_mutable_fraction, 1);
+        static hlog_t b(log_size, epoch_, disk, disk.tlog(1), log_mutable_fraction, 1);
         thlog[1] = &b;
-        static hlog_t c(log_size, epoch_, disk, disk.log2(), log_mutable_fraction, 2);
+        static hlog_t c(log_size, epoch_, disk, disk.tlog(2), log_mutable_fraction, 2);
         thlog[2] = &c;
-        static hlog_t d(log_size, epoch_, disk, disk.log3(), log_mutable_fraction, 3);
+        static hlog_t d(log_size, epoch_, disk, disk.tlog(3), log_mutable_fraction, 3);
         thlog[3] = &d;
         static hlog_t d1(log_size, epoch_, disk, disk.tlog(4), log_mutable_fraction, 4);
         thlog[4] = &d1;
@@ -219,12 +220,19 @@ public:
 
     void Refresh();
 
+    void Refresh1();
+
+    void Refresh2();
+
     /// Store interface
     template<class RC>
     inline Status Read(RC &context, AsyncCallback callback, uint64_t monotonic_serial_num);
 
     template<class UC>
     inline Status Upsert(UC &context, AsyncCallback callback, uint64_t monotonic_serial_num);
+
+    template<class UC>
+    inline Status UpsertT(UC &context, AsyncCallback callback, uint64_t monotonic_serial_num, uint16_t thread_number);
 
     template<class MC>
     inline Status Rmw(MC &context, AsyncCallback callback, uint64_t monotonic_serial_num);
@@ -281,6 +289,9 @@ private:
 
     template<class C>
     inline OperationStatus InternalUpsert(C &pending_context);
+
+    template<class C>
+    inline OperationStatus InternalUpsertT(C &pending_context, uint16_t number);
 
     template<class C>
     inline OperationStatus InternalRmw(C &pending_context, bool retrying);
@@ -373,11 +384,17 @@ private:
 
     Status RecoverHybridLog();
 
+    Status RecoverHybridLog1(uint16_t rec);
+
     Status RecoverHybridLogFromSnapshotFile();
 
     Status RecoverFromPage(Address from_address, Address to_address);
 
+    Status RecoverFromPage1(Address from_address, Address to_address,uint16_t rec);
+
     Status RestoreHybridLog();
+
+    Status RestoreHybridLog1(uint16_t rec);
 
     void MarkAllPendingRequests();
 
@@ -483,6 +500,22 @@ inline void FasterKv<K, V, D>::Refresh() {
         return;
     }
     HandleSpecialPhases();
+}
+
+template<class K, class V, class D>
+inline void FasterKv<K, V, D>::Refresh1() {
+    // We check if we are in normal mode
+    SystemState new_state = system_state_.load();
+    if (thread_ctx().phase == Phase::REST && new_state.phase == Phase::REST) {
+        return;
+    }
+    HandleSpecialPhases();
+}
+
+template<class K, class V, class D>
+inline void FasterKv<K, V, D>::Refresh2() {
+    epoch_.ProtectAndDrain();
+    // We check if we are in normal mode
 }
 
 template<class K, class V, class D>
@@ -711,6 +744,31 @@ inline Status FasterKv<K, V, D>::Upsert(UC &context, AsyncCallback callback, uin
 
     pending_upsert_context_t pending_context{context, callback};
     OperationStatus internal_status = InternalUpsert(pending_context);
+    Status status;
+
+    if (internal_status == OperationStatus::SUCCESS) {
+        status = Status::Ok;
+    } else {
+        bool async;
+        status = HandleOperationStatus(thread_ctx(), pending_context, internal_status, async);
+    }
+    thread_ctx().serial_num = monotonic_serial_num;
+    return status;
+}
+
+template<class K, class V, class D>
+template<class UC>
+inline Status FasterKv<K, V, D>::UpsertT(UC &context, AsyncCallback callback, uint64_t monotonic_serial_num , uint16_t thread_number) {
+    typedef UC upsert_context_t;
+    typedef PendingUpsertContext<UC> pending_upsert_context_t;
+    static_assert(std::is_base_of<value_t, typename upsert_context_t::value_t>::value,
+                  "value_t is not a base class of upsert_context_t::value_t");
+    static_assert(alignof(value_t) == alignof(typename upsert_context_t::value_t),
+                  "alignof(value_t) != alignof(typename upsert_context_t::value_t)");
+
+    pending_upsert_context_t pending_context{context, callback};
+    //OperationStatus internal_status = InternalUpsert(pending_context);
+    OperationStatus internal_status = InternalUpsertT(pending_context,thread_number);
     Status status;
 
     if (internal_status == OperationStatus::SUCCESS) {
@@ -956,6 +1014,162 @@ inline OperationStatus FasterKv<K, V, D>::InternalUpsert(C &pending_context) {
     }
     //cout<<Thread::id()<<endl;
     uint16_t j = Thread::id() % 4;
+    //uint16_t j = 0;
+    //j=1;
+    const key_t &key = pending_context.key();
+    KeyHash hash = key.GetHash();
+    HashBucketEntry expected_entry;
+    HashBucket *bucket;
+    AtomicHashBucketEntry *atomic_entry = FindOrCreateEntry(hash, expected_entry, bucket);   //entry ？？
+
+    // (Note that address will be Address::kInvalidAddress, if the atomic_entry was created.)
+    Address address = expected_entry.address();
+    //uint32_t k=address.h();
+    uint16_t k = address.h();
+    Address head_address = thlog[k]->head_address.load();
+    //Address hea=hlog.head_address.load();
+    //hea=thlog[0]->head_address.load();
+    Address read_only_address = thlog[k]->read_only_address.load();
+    //Address head_address = hlog.head_address.load();
+    //Address read_only_address = hlog.read_only_address.load();
+    uint64_t latest_record_version = 0;
+
+    if (address >= head_address) {
+        // Multiple keys may share the same hash. Try to find the most recent record with a matching
+        // key that we might be able to update in place.
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
+        latest_record_version = record->header.checkpoint_version;
+        /*
+        if(latest_record_version != 0){
+            cout<<"fails"<<latest_record_version<<endl;
+        }
+
+        if(latest_record_version == 0){
+            cout<<"fails"<<latest_record_version<<endl;
+        }
+         */
+        if (key != record->key()) {
+            address = TraceBackForKeyMatch(key, record->header.previous_address(), head_address);
+        }
+    }
+
+    CheckpointLockGuard lock_guard{checkpoint_locks_, hash};
+
+    // The common case
+    if (thread_ctx().phase == Phase::REST && address >= read_only_address) {
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
+        if (pending_context.PutAtomic(record)) {
+            return OperationStatus::SUCCESS;
+        } else {
+            // Must retry as RCU.
+            goto create_record;
+        }
+    }
+
+    // Acquire necessary locks.
+    switch (thread_ctx().phase) {
+        case Phase::PREPARE:
+            // Working on old version (v).
+            if (!lock_guard.try_lock_old()) {
+                pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
+                return OperationStatus::CPR_SHIFT_DETECTED;
+            } else {
+                if (latest_record_version > thread_ctx().version) {
+                    // CPR shift detected: we are in the "PREPARE" phase, and a record has a version later than
+                    // what we've seen.
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
+                    return OperationStatus::CPR_SHIFT_DETECTED;
+                }
+            }
+            break;
+        case Phase::IN_PROGRESS:
+            // All other threads are in phase {PREPARE,IN_PROGRESS,WAIT_PENDING}.
+            if (latest_record_version < thread_ctx().version) {
+                // Will create new record or update existing record to new version (v+1).
+                if (!lock_guard.try_lock_new()) {
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
+                    return OperationStatus::RETRY_LATER;
+                } else {
+                    // Update to new version (v+1) requires RCU.
+                    goto create_record;
+                }
+            }
+            break;
+        case Phase::WAIT_PENDING:
+            // All other threads are in phase {IN_PROGRESS,WAIT_PENDING,WAIT_FLUSH}.
+            if (latest_record_version < thread_ctx().version) {
+                if (lock_guard.old_locked()) {
+                    pending_context.go_async(thread_ctx().phase, thread_ctx().version, address, expected_entry);
+                    return OperationStatus::RETRY_LATER;
+                } else {
+                    // Update to new version (v+1) requires RCU.
+                    goto create_record;
+                }
+            }
+            break;
+        case Phase::WAIT_FLUSH:
+            // All other threads are in phase {WAIT_PENDING,WAIT_FLUSH,PERSISTENCE_CALLBACK}.
+            if (latest_record_version < thread_ctx().version) {
+                goto create_record;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if (address >= read_only_address) {
+        // Mutable region; try to update in place.
+        if (atomic_entry->load() != expected_entry) {
+            // Some other thread may have RCUed the record before we locked it; try again.
+            return OperationStatus::RETRY_NOW;
+        }
+        // We acquired the necessary locks, so so we can update the record's bucket atomically.
+        record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(address));
+        if (pending_context.PutAtomic(record)) {
+            // Host successfully replaced record, atomically.
+            return OperationStatus::SUCCESS;
+        } else {
+            // Must retry as RCU.
+            goto create_record;
+        }
+    }
+
+    // Create a record and attempt RCU.
+    create_record:
+    uint32_t record_size = record_t::size(key, pending_context.value_size());
+    Address new_address = BlockAllocateT(record_size, j);
+    record_t *record = reinterpret_cast<record_t *>(thlog[j]->Get(new_address));
+    new(record) record_t{
+            RecordInfo{
+                    static_cast<uint16_t>(thread_ctx().version), true, false, false,
+                    expected_entry.address()},
+            key};
+    pending_context.Put(record);   //put ？？？
+    // new_address+=Address{0,0,j}.control();
+    //HashBucketEntry updated_entry{new_address, hash.tag(), false};
+    HashBucketEntry updated_entry{new_address, hash.tag(), false};
+
+    if (atomic_entry->compare_exchange_strong(expected_entry, updated_entry)) {
+        // Installed the new record in the hash table.
+        return OperationStatus::SUCCESS;
+    } else {
+        // Try again.
+        record->header.invalid = true;
+        return InternalUpsert(pending_context);
+    }
+}
+
+template<class K, class V, class D>
+template<class C>
+inline OperationStatus FasterKv<K, V, D>::InternalUpsertT(C &pending_context,uint16_t number) {
+    typedef C pending_upsert_context_t;
+
+    if (thread_ctx().phase != Phase::REST) {
+        HeavyEnter();
+    }
+    //cout<<Thread::id()<<endl;
+    uint16_t j = Thread::id() % number;
+    //uint16_t j = 0;
     //j=1;
     const key_t &key = pending_context.key();
     KeyHash hash = key.GetHash();
@@ -1985,8 +2199,13 @@ template<class K, class V, class D>
 Status FasterKv<K, V, D>::RecoverHybridLog() {
     class Context : public IAsyncContext {
     public:
+        /*
         Context(hlog_t &hlog_, uint32_t page_, RecoveryStatus &recovery_status_)
                 : hlog{&hlog_}, page{page_}, recovery_status{&recovery_status_} {
+        }
+        */
+        Context(hlog_t *hlog_, uint32_t page_, RecoveryStatus &recovery_status_)
+                : hlog{hlog_}, page{page_}, recovery_status{&recovery_status_} {
         }
 
         /// The deep-copy constructor
@@ -2010,17 +2229,20 @@ Status FasterKv<K, V, D>::RecoverHybridLog() {
         result = context->hlog->AsyncReadPagesFromLog(context->page, 1, *context->recovery_status);
     };
 
-    Address from_address = checkpoint_.index_metadata.checkpoint_start_address;
-    Address to_address = checkpoint_.log_metadata.final_address;
+    //Address from_address = checkpoint_.index_metadata.checkpoint_start_address;
+    //Address to_address = checkpoint_.log_metadata.final_address;
+    Address from_address = checkpoint_.index_metadata.thlog_checkpoint_address[0];
+    Address to_address = checkpoint_.log_metadata.tfinal_address[0];
 
     uint32_t start_page = from_address.page();
     uint32_t end_page = to_address.offset() > 0 ? to_address.page() + 1 : to_address.page();
-    uint32_t capacity = hlog.buffer_size();
+    //uint32_t capacity = hlog.buffer_size();
+    uint32_t capacity = thlog[0]->buffer_size();
     RecoveryStatus recovery_status{start_page, end_page};
     // Initially issue read request for all pages that can be held in memory
     uint32_t total_pages_to_read = end_page - start_page;
     uint32_t pages_to_read_first = std::min(capacity, total_pages_to_read);
-    RETURN_NOT_OK(hlog.AsyncReadPagesFromLog(start_page, pages_to_read_first, recovery_status));
+    RETURN_NOT_OK(thlog[0]->AsyncReadPagesFromLog(start_page, pages_to_read_first, recovery_status));
 
     for (uint32_t page = start_page; page < end_page; ++page) {
         while (recovery_status.page_status(page) != PageRecoveryStatus::ReadDone) {
@@ -2035,10 +2257,91 @@ Status FasterKv<K, V, D>::RecoverHybridLog() {
 
         // OS thread flushes current page and issues a read request if necessary
         if (page + capacity < end_page) {
-            Context context{hlog, page + capacity, recovery_status};
-            RETURN_NOT_OK(hlog.AsyncFlushPage(page, recovery_status, callback, &context));
+            Context context{thlog[0], page + capacity, recovery_status};
+            RETURN_NOT_OK(thlog[0]->AsyncFlushPage(page, recovery_status, callback, &context));
         } else {
-            RETURN_NOT_OK(hlog.AsyncFlushPage(page, recovery_status, nullptr, nullptr));
+            RETURN_NOT_OK(thlog[0]->AsyncFlushPage(page, recovery_status, nullptr, nullptr));
+        }
+    }
+    // Wait until all pages have been flushed
+    for (uint32_t page = start_page; page < end_page; ++page) {
+        while (recovery_status.page_status(page) != PageRecoveryStatus::FlushDone) {
+            disk.TryComplete();
+            std::this_thread::sleep_for(10ms);
+        }
+    }
+    return Status::Ok;
+}
+
+template<class K, class V, class D>
+Status FasterKv<K, V, D>::RecoverHybridLog1(uint16_t rec) {
+    class Context : public IAsyncContext {
+    public:
+        /*
+        Context(hlog_t &hlog_, uint32_t page_, RecoveryStatus &recovery_status_)
+                : hlog{&hlog_}, page{page_}, recovery_status{&recovery_status_} {
+        }
+        */
+        Context(hlog_t *hlog_, uint32_t page_, RecoveryStatus &recovery_status_)
+                : hlog{hlog_}, page{page_}, recovery_status{&recovery_status_} {
+        }
+
+        /// The deep-copy constructor
+        Context(const Context &other)
+                : hlog{other.hlog}, page{other.page}, recovery_status{other.recovery_status} {
+        }
+
+    protected:
+        Status DeepCopy_Internal(IAsyncContext *&context_copy) final {
+            return IAsyncContext::DeepCopy_Internal(*this, context_copy);
+        }
+
+    public:
+        hlog_t *hlog;
+        uint32_t page;
+        RecoveryStatus *recovery_status;
+    };
+
+    auto callback = [](IAsyncContext *ctxt, Status result) {
+        CallbackContext<Context> context{ctxt};
+        result = context->hlog->AsyncReadPagesFromLog(context->page, 1, *context->recovery_status);
+    };
+
+    //Address from_address = checkpoint_.index_metadata.checkpoint_start_address;
+    //Address to_address = checkpoint_.log_metadata.final_address;
+    Address from_address = checkpoint_.index_metadata.thlog_checkpoint_address[rec];
+    Address to_address = checkpoint_.log_metadata.tfinal_address[rec];
+
+    uint32_t start_page = from_address.page();
+    uint32_t end_page = to_address.offset() > 0 ? to_address.page() + 1 : to_address.page();
+    //uint32_t capacity = hlog.buffer_size();
+    uint32_t capacity = thlog[rec]->buffer_size();
+    RecoveryStatus recovery_status{start_page, end_page};
+    // Initially issue read request for all pages that can be held in memory
+    uint32_t total_pages_to_read = end_page - start_page;
+    uint32_t pages_to_read_first = std::min(capacity, total_pages_to_read);
+    RETURN_NOT_OK(thlog[rec]->AsyncReadPagesFromLog(start_page, pages_to_read_first, recovery_status));
+
+    for (uint32_t page = start_page; page < end_page; ++page) {
+        while (recovery_status.page_status(page) != PageRecoveryStatus::ReadDone) {
+            disk.TryComplete();
+            std::this_thread::sleep_for(10ms);
+        }
+
+        // handle start and end at non-page boundaries
+      //  RETURN_NOT_OK(RecoverFromPage(page == start_page ? from_address : Address{page, 0},
+        //                              page + 1 == end_page ? to_address :
+          //                            Address{page, Address::kMaxOffset}));
+        RETURN_NOT_OK(RecoverFromPage1(page == start_page ? from_address : Address{page, 0},
+                                      page + 1 == end_page ? to_address :
+                                      Address{page, Address::kMaxOffset},rec));
+
+        // OS thread flushes current page and issues a read request if necessary
+        if (page + capacity < end_page) {
+            Context context{thlog[rec], page + capacity, recovery_status};
+            RETURN_NOT_OK(thlog[rec]->AsyncFlushPage(page, recovery_status, callback, &context));
+        } else {
+            RETURN_NOT_OK(thlog[rec]->AsyncFlushPage(page, recovery_status, nullptr, nullptr));
         }
     }
     // Wait until all pages have been flushed
@@ -2145,7 +2448,8 @@ template<class K, class V, class D>
 Status FasterKv<K, V, D>::RecoverFromPage(Address from_address, Address to_address) {
     assert(from_address.page() == to_address.page());
     for (Address address = from_address; address < to_address;) {
-        record_t *record = reinterpret_cast<record_t *>(hlog.Get(address));
+        record_t *record = reinterpret_cast<record_t *>(thlog[0]->Get(address));
+        int a=sizeof(record->header);
         if (record->header.IsNull()) {
             address += sizeof(record->header);
             continue;
@@ -2177,21 +2481,60 @@ Status FasterKv<K, V, D>::RecoverFromPage(Address from_address, Address to_addre
 }
 
 template<class K, class V, class D>
+Status FasterKv<K, V, D>::RecoverFromPage1(Address from_address, Address to_address,uint16_t rec) {
+    assert(from_address.page() == to_address.page());
+    uint16_t k=rec;
+    from_address += Address{0, 0, k}.control();
+    to_address += Address{0, 0, k}.control();
+    for (Address address = from_address; address < to_address;) {
+        record_t *record = reinterpret_cast<record_t *>(thlog[rec]->Get(address));
+        int a=sizeof(record->header);
+        if (record->header.IsNull()) {
+            address += sizeof(record->header);
+            continue;
+        }
+        if (record->header.invalid) {
+            address += record->size();
+            continue;
+        }
+        const key_t &key = record->key();
+        KeyHash hash = key.GetHash();
+        HashBucketEntry expected_entry;
+        HashBucket *bucket;
+        AtomicHashBucketEntry *atomic_entry = FindOrCreateEntry(hash, expected_entry, bucket);
+
+        if (record->header.checkpoint_version <= checkpoint_.log_metadata.version) {
+            HashBucketEntry new_entry{address, hash.tag(), false};
+            atomic_entry->store(new_entry);
+        } else {
+            record->header.invalid = true;
+            if (record->header.previous_address() < checkpoint_.index_metadata.thlog_checkpoint_address[rec]) {
+                HashBucketEntry new_entry{record->header.previous_address(), hash.tag(), false};
+                atomic_entry->store(new_entry);
+            }
+        }
+        address += record->size();
+    }
+
+    return Status::Ok;
+}
+
+template<class K, class V, class D>
 Status FasterKv<K, V, D>::RestoreHybridLog() {
-    Address tail_address = checkpoint_.log_metadata.final_address;
+    Address tail_address = checkpoint_.log_metadata.tfinal_address[0];
     uint32_t end_page = tail_address.offset() > 0 ? tail_address.page() + 1 : tail_address.page();
-    uint32_t capacity = hlog.buffer_size();
+    uint32_t capacity = thlog[0]->buffer_size();
     // Restore as much of the log as will fit in memory.
     uint32_t start_page;
-    if (end_page < capacity - hlog.kNumHeadPages) {
+    if (end_page < capacity - thlog[0]->kNumHeadPages) {
         start_page = 0;
     } else {
-        start_page = end_page - (capacity - hlog.kNumHeadPages);
+        start_page = end_page - (capacity - thlog[0]->kNumHeadPages);
     }
     RecoveryStatus recovery_status{start_page, end_page};
 
     uint32_t num_pages = end_page - start_page;
-    RETURN_NOT_OK(hlog.AsyncReadPagesFromLog(start_page, num_pages, recovery_status));
+    RETURN_NOT_OK(thlog[0]->AsyncReadPagesFromLog(start_page, num_pages, recovery_status));
 
     // Wait until all pages have been read.
     for (uint32_t page = start_page; page < end_page; ++page) {
@@ -2203,7 +2546,39 @@ Status FasterKv<K, V, D>::RestoreHybridLog() {
     // Skip the null page.
     Address head_address = start_page == 0 ? Address{0, Constants::kCacheLineBytes} :
                            Address{start_page, 0};
-    hlog.RecoveryReset(checkpoint_.index_metadata.log_begin_address, head_address, tail_address);
+    thlog[0]->RecoveryReset(checkpoint_.index_metadata.thlog_begin_address[0], head_address, tail_address);
+    return Status::Ok;
+}
+
+template<class K, class V, class D>
+Status FasterKv<K, V, D>::RestoreHybridLog1(uint16_t rec) {
+    Address tail_address = checkpoint_.log_metadata.tfinal_address[rec];
+    uint32_t end_page = tail_address.offset() > 0 ? tail_address.page() + 1 : tail_address.page();
+    uint32_t capacity = thlog[rec]->buffer_size();
+    // Restore as much of the log as will fit in memory.
+    uint32_t start_page;
+    if (end_page < capacity - thlog[rec]->kNumHeadPages) {
+        start_page = 0;
+    } else {
+        start_page = end_page - (capacity - thlog[rec]->kNumHeadPages);
+    }
+    RecoveryStatus recovery_status{start_page, end_page};
+
+    uint32_t num_pages = end_page - start_page;
+    RETURN_NOT_OK(thlog[rec]->AsyncReadPagesFromLog(start_page, num_pages, recovery_status));
+
+    // Wait until all pages have been read.
+    for (uint32_t page = start_page; page < end_page; ++page) {
+        while (recovery_status.page_status(page) != PageRecoveryStatus::ReadDone) {
+            disk.TryComplete();
+            std::this_thread::sleep_for(10ms);
+        }
+    }
+    // Skip the null page.
+    Address head_address = start_page == 0 ? Address{0, Constants::kCacheLineBytes} :
+                           Address{start_page, 0};
+    head_address+= Address{0, 0, rec}.control();
+    thlog[rec]->RecoveryReset(checkpoint_.index_metadata.thlog_begin_address[rec], head_address, tail_address);
     return Status::Ok;
 }
 
@@ -2462,14 +2837,17 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                         Address read_only_address;
                         //Address tail_address = hlog.ShiftReadOnlyToTail();
                         // Get final address for CPR
-                        checkpoint_.log_metadata.final_address = tail_address;
-                        for (int i = 0; i < 32; i++) {
+                        //tail_address = thlog[0]->GetTailAddress();
+                        checkpoint_.log_metadata.final_address = thlog[0]->GetTailAddress();
+                        //checkpoint_.log_metadata.final_address = thlog[0]->GetTailAddress();
+                        for (int i = 0; i < 40; i++) {
                             if (thlog[i]->GetTailAddress().page() == thlog[i]->read_only_address.page() &&
                                 thlog[i]->GetTailAddress().offset()==thlog[i]->read_only_address.offset())
                                 continue;
                             else{
                                 read_only_address=thlog[i]->read_only_address.load();
                                 tail_address=thlog[i]->GetTailAddress();
+                                checkpoint_.log_metadata.tfinal_address[i] = tail_address;
                                 thlog[i]->ShiftReadOnlyToTail();
                             }
                         }
@@ -2715,8 +3093,13 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                         if (!epoch_.HasThreadFinishedPhase(Phase::WAIT_FLUSH)) {
                             bool flushed;
                             if (fold_over_snapshot) {
-                                flushed = hlog.flushed_until_address.load() >=
-                                          checkpoint_.log_metadata.final_address;
+                                //flushed = hlog.flushed_until_address.load() >=
+                                  //        checkpoint_.log_metadata.final_address;
+                                  flushed=true;
+                                  for(int i=0;i<checkpoint_.index_metadata.size;i++)
+                                      if(thlog[i]->flushed_until_address.load() < checkpoint_.log_metadata.tfinal_address[i])
+                                          flushed= false;
+
                             } else {
                                 flushed = checkpoint_.flush_pending.load() == 0;
                             }
@@ -2841,19 +3224,41 @@ bool FasterKv<K, V, D>::Checkpoint(void(*index_persistence_callback)(Status resu
     token = Guid::Create();
     disk.CreateIndexCheckpointDirectory(token);
     disk.CreateCprCheckpointDirectory(token);
+    Address a[40];
+    Address b[40];
+    int h_size=0;
+    for (int i = 0; i < 40; i++) {
+        if (thlog[i]->GetTailAddress().page() == thlog[i]->read_only_address.page() &&
+            thlog[i]->GetTailAddress().offset()==thlog[i]->read_only_address.offset())
+            continue;
+        else{
+            a[i]=thlog[i]->begin_address.load();
+            b[i]=thlog[i]->GetTailAddress();
+            h_size++;
+        }
+    }
     // Obtain tail address for fuzzy index checkpoint
     if (!fold_over_snapshot) {
+
         checkpoint_.InitializeCheckpoint(token, desired.version, state_[resize_info_.version].size(),
                                          hlog.begin_address.load(), hlog.GetTailAddress(), true,
                                          hlog.flushed_until_address.load(),
                                          index_persistence_callback,
                                          hybrid_log_persistence_callback);
+
+
     } else {
+        /*
         checkpoint_.InitializeCheckpoint(token, desired.version, state_[resize_info_.version].size(),
                                          hlog.begin_address.load(), hlog.GetTailAddress(), false,
                                          Address::kInvalidAddress, index_persistence_callback,
                                          hybrid_log_persistence_callback);
-
+        */
+        checkpoint_.InitializeCheckpoint1(token, desired.version, state_[resize_info_.version].size(),
+                                          hlog.begin_address.load(), hlog.GetTailAddress(),
+                                          a, b, h_size,  false,
+                                          Address::kInvalidAddress, index_persistence_callback,
+                                          hybrid_log_persistence_callback);
     }
     InitializeCheckpointLocks();
     // Let other threads know that the checkpoint has started.
@@ -2958,13 +3363,28 @@ Status FasterKv<K, V, D>::Recover(const Guid &index_token, const Guid &hybrid_lo
         // The index itself (including overflow buckets).
         BREAK_NOT_OK(RecoverFuzzyIndex());
         BREAK_NOT_OK(RecoverFuzzyIndexComplete(true));
+        uint16_t r=0;
+        cout<<"size: "<<checkpoint_.index_metadata.size<<endl;
         // Any changes made to the log while the index was being fuzzy-checkpointed.
         if (fold_over_snapshot) {
-            BREAK_NOT_OK(RecoverHybridLog());
+            //BREAK_NOT_OK(RecoverHybridLog());
+            for(int i=0;i<checkpoint_.index_metadata.size;i++){
+                BREAK_NOT_OK(RecoverHybridLog1(r));
+                r++;
+            }
+            if(status != Status::Ok)
+                break;
         } else {
             BREAK_NOT_OK(RecoverHybridLogFromSnapshotFile());
         }
-        BREAK_NOT_OK(RestoreHybridLog());
+        r=0;
+        //BREAK_NOT_OK(RestoreHybridLog());
+        for(int i=0;i<checkpoint_.index_metadata.size;i++){
+            BREAK_NOT_OK(RestoreHybridLog1(r));
+            r++;
+        }
+        if(status != Status::Ok)
+            break;
     } while (false);
     if (status == Status::Ok) {
         for (const auto &token : checkpoint_.continue_tokens) {

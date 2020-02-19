@@ -48,6 +48,7 @@ public:
         num_ht_bytes = 0;
         num_ofb_bytes = 0;
         ofb_count = FixedPageAddress::kInvalidAddress;
+        size=h_size;
         for(int i=0;i<h_size;i++){
             thlog_begin_address[i]=a[i];
             thlog_checkpoint_address[i]=b[i];
@@ -62,6 +63,11 @@ public:
         ofb_count = FixedPageAddress::kInvalidAddress;
         log_begin_address = Address::kInvalidAddress;
         checkpoint_start_address = Address::kInvalidAddress;
+        for(int i=0;i<40;i++){
+            thlog_begin_address[i] = Address::kInvalidAddress;
+            thlog_checkpoint_address[i] = Address::kInvalidAddress;
+        }
+        size=0;
     }
 
     uint32_t version;
@@ -75,6 +81,7 @@ public:
     Address checkpoint_start_address;
     Address thlog_begin_address[40];
     Address thlog_checkpoint_address[40];
+    int size;
 
 };
 
@@ -96,6 +103,8 @@ public:
         num_threads = 0;
         flushed_address = flushed_address_;
         final_address = Address::kMaxAddress;
+        for(int i=0;i<40;i++)
+            tfinal_address[i] = Address::kMaxAddress;
         std::memset(guids, 0, sizeof(guids));
         std::memset(monotonic_serial_nums, 0, sizeof(monotonic_serial_nums));
     }
@@ -111,10 +120,11 @@ public:
     Address final_address;
     uint64_t monotonic_serial_nums[Thread::kMaxNumThreads];
     Guid guids[Thread::kMaxNumThreads];
+    Address tfinal_address[40];
 };
 
-static_assert(sizeof(LogMetadata) == 32 + (24 * Thread::kMaxNumThreads),
-              "sizeof(LogMetadata) != 32 + (24 * Thread::kMaxNumThreads)");
+//static_assert(sizeof(LogMetadata) == 32 + (24 * Thread::kMaxNumThreads),
+ //             "sizeof(LogMetadata) != 32 + (24 * Thread::kMaxNumThreads)");
 
 /// State of the active Checkpoint()/Recover() call, including metadata written to disk.
 template<class F>
@@ -176,6 +186,28 @@ public:
         index_token = token;
         hybrid_log_token = token;
         index_metadata.Initialize(version, table_size, log_begin_address, checkpoint_start_address);
+        log_metadata.Initialize(use_snapshot_file, version, flushed_until_address);
+        if (use_snapshot_file) {
+            flush_pending = UINT32_MAX;
+        } else {
+            flush_pending = 0;
+        }
+        index_persistence_callback = index_persistence_callback_;
+        hybrid_log_persistence_callback = hybrid_log_persistence_callback_;
+    }
+
+    void InitializeCheckpoint1(const Guid &token, uint32_t version, uint64_t table_size,
+                              Address log_begin_address, Address checkpoint_start_address,
+                               Address a[],Address b[],int h_size,
+                              bool use_snapshot_file, Address flushed_until_address,
+                              index_persistence_callback_t index_persistence_callback_,
+                              hybrid_log_persistence_callback_t hybrid_log_persistence_callback_) {
+        failed = false;
+        index_checkpoint_started = false;
+        continue_tokens.clear();
+        index_token = token;
+        hybrid_log_token = token;
+        index_metadata.Initialize1(version, table_size, log_begin_address, checkpoint_start_address,a,b,h_size);
         log_metadata.Initialize(use_snapshot_file, version, flushed_until_address);
         if (use_snapshot_file) {
             flush_pending = UINT32_MAX;

@@ -131,7 +131,7 @@ option(WITH_FH_TESTS "build with fast hash tests" ON)
 if (WITH_FH_TESTS)
     set(FH_TEST
             tests/FH_Unit/faster_function_test.cpp
-            tests/FH_Unit/in_memory_test.cpp
+            #tests/FH_Unit/in_memory_test.cpp
             tests/FH_Unit/faster_struct_test.cpp
             tests/FH_InsertDeleteUpsertTest.cpp
             tests/FH_RoundInsertDeleteTest.cpp
