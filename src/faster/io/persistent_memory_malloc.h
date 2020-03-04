@@ -261,7 +261,7 @@ public:
               read_buffer_pool{1, sector_size}, io_buffer_pool{1, sector_size},
               read_only_address{start_address}, safe_read_only_address{start_address},
               head_address{start_address}, safe_head_address{start_address},
-              flushed_until_address{start_address}, begin_address{start_address},
+              flushed_until_address{start_address}, begin_address{start_address},gc_address{start_address},
               tail_page_offset_{start_address}, buffer_size_{0}, pages_{nullptr}, page_status_{nullptr} {
         assert(start_address.page() <= Address::kMaxPage);
 
@@ -510,6 +510,8 @@ public:
 
     void RecoveryReset(Address begin_address_, Address head_address_, Address tail_address);
 
+    inline void ShiftHeadAddress(Address address);
+
 private:
     template<class F>
     Status AsyncReadPages(F &read_file, uint32_t file_start_page, uint32_t start_page,
@@ -570,9 +572,11 @@ public:
     /// The address of the true head of the log--everything before this address has been truncated
     /// by garbage collection.
     AtomicAddress begin_address;
+
+    /// garbage collection address
+    AtomicAddress gc_address;
 private:
     uint32_t buffer_size_;
-
     /// -- the latest N pages should be mutable.
     uint32_t num_mutable_pages_;
 
@@ -1021,6 +1025,22 @@ inline void PersistentMemoryMalloc<D>::PageAlignedShiftHeadAddress(uint32_t tail
     Address old_head_address;
     if (MonotonicUpdate(head_address, desired_head_address, old_head_address)) {
         OnPagesClosed_Context context{this, desired_head_address, false};
+        IAsyncContext *context_copy;
+        Status result = context.DeepCopy(context_copy);
+        assert(result == Status::Ok);
+        epoch_->BumpCurrentEpoch(OnPagesClosed, context_copy);
+    }
+}
+
+template<class D>
+inline void PersistentMemoryMalloc<D>::ShiftHeadAddress(Address address) {
+    //obtain local values of variables that can change
+    Address current_head_address = head_address.load();
+    Address current_flushed_until_address = flushed_until_address.load();
+    uint16_t k = current_head_address.h();
+    Address old_head_address;
+    if (MonotonicUpdate(head_address, address, old_head_address)) {
+        OnPagesClosed_Context context{this, address, false};
         IAsyncContext *context_copy;
         Status result = context.DeepCopy(context_copy);
         assert(result == Status::Ok);

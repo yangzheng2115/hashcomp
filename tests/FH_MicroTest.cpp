@@ -63,7 +63,7 @@ uint64_t success = 0;
 uint64_t failure = 0;
 
 //uint64_t total_count = DEFAULT_KEYS_COUNT;
-uint64_t total_count = 100000000;
+uint64_t total_count = 20000000;
 
 uint64_t timer_range = default_timer_range;
 
@@ -107,15 +107,12 @@ void simpleInsert1() {
         }
     };
     //store.StartSession();
-    for (int i = 0; i < total_count; i++) {
+    for (uint64_t i = 0; i < total_count; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
-        if (i == 1398097) {
-            int te = 0;
-        }
 #if CONTEXT_TYPE == 0
-        UpsertContext context{loads[i], loads[i]};
+        UpsertContext context{i, i};
 #elif CONTEXT_TYPE == 2
         UpsertContext context(loads[i], 8);
         context.reset((uint8_t *) (content + i));
@@ -145,9 +142,10 @@ void simpleRead() {
             CallbackContext<ReadContext> context{ctxt};
         };
         ReadContext context{i};
-
+        if(i==7931739)
+            int s=0;
         Status result = store.Read(context, callback, 1);
-        if (result == Status::Ok)
+            if (result == Status::Ok)
             hit++;
         else
             fail++;
@@ -221,7 +219,7 @@ void RecoverAndTest(const Guid &index_token, const Guid &hybrid_log_token) {
     std::vector<Guid> session_ids;
     store.Recover(index_token, hybrid_log_token, version, session_ids);
     cout << "recover successful" << endl;
-    for (uint64_t i = 0; i < total_count+100000; i++) {
+    for (uint64_t i = 0; i < total_count*2; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<ReadContext> context{ctxt};
         };
@@ -323,7 +321,7 @@ void *checkWorker(void *args) {
     };
     store.StartSession();
     s:
-    for (uint64_t  i = 0; i < total_count; i++) {
+    for (uint64_t  i = total_count; i < total_count*2; i++) {
         auto callback = [](IAsyncContext *ctxt, Status result) {
             CallbackContext<UpsertContext> context{ctxt};
         };
@@ -372,6 +370,47 @@ void *checkWorker(void *args) {
     store.StopSession();
     //output[work->tid] << work->tid << " " << j << endl;
 }
+
+void *gcWorker(void *args) {
+    int inserted = 0;
+    int j = 0;
+    struct target *work = (struct target *) args;
+    int k = work->tid;
+    store.StartSession();
+    s:
+    for (uint64_t  i = total_count; i < total_count*2; i++) {
+        auto callback = [](IAsyncContext *ctxt, Status result) {
+            CallbackContext<UpsertContext> context{ctxt};
+        };
+#if CONTEXT_TYPE == 0
+        UpsertContext context{i, i};
+#elif CONTEXT_TYPE == 2
+        UpsertContext context(loads[i], 8);
+        context.reset((uint8_t *) (content + i));
+#endif
+        store.Refresh1();
+        //Status stat = store.Upsert(context, callback, i);
+        Status stat = store.UpsertT(context, callback, i,thread_number);
+        inserted++;
+        int excepcted = 0;
+        if (stopMeasure.compare_exchange_strong(excepcted, 1)) {
+            Address a;
+            //if (store.CheckpointHybridLog(hybrid_log_persistence_callback, token))
+            if(store.GrabageCollecton(a, nullptr, nullptr)){
+                cout<<"garbage collection begin"<<endl;
+            }
+        }
+        if (i % kCompletePendingInterval == 0) {
+            store.CompletePending(false);
+        } else if (i % kRefreshInterval == 0) {
+            store.Refresh2();
+        }
+    }
+    //store.CompletePending(true);
+    store.StopSession();
+    //output[work->tid] << work->tid << " " << j << endl;
+}
+
 void multiPoints() {
     output = new stringstream[thread_number];
     for (int i = 0; i < thread_number; i++) {
@@ -383,6 +422,19 @@ void multiPoints() {
         //cout << outstr;
     }
     cout << "checkpoint done ..." << endl;
+}
+
+void GC() {
+    output = new stringstream[thread_number];
+    for (int i = 0; i < thread_number; i++) {
+        pthread_create(&workers[i], nullptr, gcWorker, &parms[i]);
+    }
+    for (int i = 0; i < thread_number; i++) {
+        pthread_join(workers[i], nullptr);
+        // string outstr = output[i].str();
+        //cout << outstr;
+    }
+    cout << "garbage collection done ..." << endl;
 }
 
 void *measureWorker(void *args) {
@@ -559,19 +611,18 @@ int main(int argc, char **argv) {
         goto y;
     }
     // simpleInsert();
-    //cout<<"simple insert"<<endl;
-    //simpleInsert1();
     cout << "multiinsert" << endl;
     multiWorkers();
     cout << "operations: " << success << " failure: " << failure << " throughput: "
          << (double) (success + failure) * thread_number / total_time << endl;
-    success=0;
-    failure=0;
-    total_time=0;
-    cout << "multiinsert" << endl;
-    multiWorkers();
-    cout << "operations: " << success << " failure: " << failure << " throughput: "
-         << (double) (success + failure) * thread_number / total_time << endl;
+    stopMeasure.store(0);
+    multiPoints();
+    //cout << "simple read" << endl;
+    //simpleRead();
+    stopMeasure.store(0);
+    GC();
+    cout << "simple read" << endl;
+    simpleRead();
     //cout<<"simple insert"<<endl;
     //simpleInsert1();
     //cout << "simple read" << endl;

@@ -70,10 +70,12 @@ public:
 
     /// Get the bucket specified by the hash.
     inline const HashBucket &bucket(KeyHash hash) const {
+        uint64_t  a=hash.idx(size_);
         return buckets_[hash.idx(size_)];
     }
 
     inline HashBucket &bucket(KeyHash hash) {
+        uint64_t  a=hash.idx(size_);
         return buckets_[hash.idx(size_)];
     }
 

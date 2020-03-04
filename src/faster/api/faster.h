@@ -263,6 +263,12 @@ public:
     bool ShiftBeginAddress(Address address, GcState::truncate_callback_t truncate_callback,
                            GcState::complete_callback_t complete_callback);
 
+    /// Garbage collection
+    bool GrabageCollecton(Address address, GcState::truncate_callback_t truncate_callback,
+                           GcState::complete_callback_t complete_callback);
+
+    bool Gcflag=false;
+
     /// Make the hash table larger.
     bool GrowIndex(GrowState::callback_t caller_callback);
 
@@ -278,7 +284,6 @@ public:
     inline void DumpDistribution() {
         state_[resize_info_.version].DumpDistribution(overflow_buckets_allocator_[resize_info_.version]);
     }
-
 private:
     typedef Record<key_t, value_t> record_t;
 
@@ -726,7 +731,8 @@ inline Status FasterKv<K, V, D>::Read(RC &context, AsyncCallback callback, uint6
     } else {
         assert(internal_status == OperationStatus::RECORD_ON_DISK);
         bool async;
-        status = HandleOperationStatus(thread_ctx(), pending_context, internal_status, async);
+        status = Status::NotFound;
+        //status = HandleOperationStatus(thread_ctx(), pending_context, internal_status, async);
     }
     thread_ctx().serial_num = monotonic_serial_num;
     return status;
@@ -965,6 +971,7 @@ inline OperationStatus FasterKv<K, V, D>::InternalRead(C &pending_context) const
         // matches.
         const record_t *record = reinterpret_cast<const record_t *>(thlog[k]->Get(address));
         latest_record_version = record->header.checkpoint_version;
+        key_t  a=record->key();
         if (key != record->key()) {
             address = TraceBackForKeyMatch(key, record->header.previous_address(), head_address);
         }
@@ -1806,7 +1813,7 @@ inline Address FasterKv<K, V, D>::BlockAllocateT(uint32_t record_size, uint32_t 
     Address retval = thlog[j]->Allocate(record_size, page);
     retval += Address{0, 0, j}.control();
     while (retval < thlog[j]->read_only_address.load()) {
-        Refresh();
+        //Refresh();
         Address test = Address{0, 0, j}.control() + Address::kInvalidAddress;
         // Don't overrun the hlog's tail offset.
         //bool page_closed = (retval == Address::kInvalidAddress);
@@ -2484,8 +2491,10 @@ template<class K, class V, class D>
 Status FasterKv<K, V, D>::RecoverFromPage1(Address from_address, Address to_address,uint16_t rec) {
     assert(from_address.page() == to_address.page());
     uint16_t k=rec;
-    from_address += Address{0, 0, k}.control();
-    to_address += Address{0, 0, k}.control();
+    if(from_address.h()!=k)
+         from_address += Address{0, 0, k}.control();
+    if(to_address.h()!=k)
+         to_address += Address{0, 0, k}.control();
     for (Address address = from_address; address < to_address;) {
         record_t *record = reinterpret_cast<record_t *>(thlog[rec]->Get(address));
         int a=sizeof(record->header);
@@ -2497,6 +2506,8 @@ Status FasterKv<K, V, D>::RecoverFromPage1(Address from_address, Address to_addr
             address += record->size();
             continue;
         }
+        //address += record->size();
+        //continue;
         const key_t &key = record->key();
         KeyHash hash = key.GetHash();
         HashBucketEntry expected_entry;
@@ -2609,7 +2620,7 @@ bool FasterKv<K, V, D>::CleanHashTableBuckets() {
     uint8_t version = resize_info_.version;
     Address begin_address = hlog.begin_address.load();
     uint64_t upper_bound;
-    if (chunk + 1 < grow_.num_chunks) {
+    if (chunk + 1 < gc_.num_chunks) {
         // All chunks but the last chunk contain kGrowHashTableChunkSize elements.
         upper_bound = kGrowHashTableChunkSize;
     } else {
@@ -2618,15 +2629,42 @@ bool FasterKv<K, V, D>::CleanHashTableBuckets() {
     }
     for (uint64_t idx = 0; idx < upper_bound; ++idx) {
         HashBucket *bucket = &state_[version].bucket(chunk * kGcHashTableChunkSize + idx);
+        if(chunk * kGcHashTableChunkSize + idx==54895135)
+            int jj=0;
+        Address a(0,112,0);
+        const record_t *record = reinterpret_cast<const record_t *>(thlog[0]->Get(a));
+        a=thlog[0]->head_address.load();
         while (true) {
             for (uint32_t entry_idx = 0; entry_idx < HashBucket::kNumEntries; ++entry_idx) {
                 AtomicHashBucketEntry &atomic_entry = bucket->entries[entry_idx];
                 HashBucketEntry expected_entry = atomic_entry.load();
+                uint32_t k = expected_entry.address().h();
                 if (!expected_entry.unused() && expected_entry.address() != Address::kInvalidAddress &&
-                    expected_entry.address() < begin_address) {
+                    expected_entry.address() < thlog[k]->gc_address.load()) {
                     // The record that this entry points to was truncated; try to delete the entry.
-                    atomic_entry.compare_exchange_strong(expected_entry, HashBucketEntry::kInvalidEntry);
+                    //atomic_entry.compare_exchange_strong(expected_entry, HashBucketEntry::kInvalidEntry);
                     // If deletion failed, then some other thread must have added a new record to the entry.
+                    Address address = expected_entry.address();
+                    const record_t *record1 = reinterpret_cast<const record_t *>(thlog[k]->Get(address));
+                    //const record_t* record1 = reinterpret_cast<record_t*>(thlog[k]->Get(address));
+                    uint32_t record_size = record1->size();
+                    key_t  a=record1->key();
+                    key_t b(2);
+                    if(a==b)
+                        int cc=0;
+                    Address new_address = BlockAllocateT(record_size, k);
+                    record_t *record = reinterpret_cast<record_t *>(thlog[k]->Get(new_address));
+                    new(record) record_t{
+                            RecordInfo{
+                                    static_cast<uint16_t>(thread_ctx().version), true, false, false,
+                                    expected_entry.address()},
+                            record1->key()};
+                    a=record->key();
+                    //pending_context.Put(record);   //put ？？？
+                    HashBucketEntry updated_entry{new_address, expected_entry.tag(), false};
+
+                    atomic_entry.compare_exchange_strong(expected_entry, updated_entry);
+                        // Installed the new record in the hash table
                 }
             }
             // Go to next bucket in the chain.
@@ -2638,6 +2676,8 @@ bool FasterKv<K, V, D>::CleanHashTableBuckets() {
             bucket = &overflow_buckets_allocator_[version].Get(overflow_entry.address());
         }
     }
+    if(chunk + 1==gc_.num_chunks)
+        Gcflag=true;
     // Done with this chunk--did some work.
     return true;
 }
@@ -2921,13 +2961,21 @@ bool FasterKv<K, V, D>::GlobalMoveToNextState(SystemState current_state) {
                 case Phase::GC_IN_PROGRESS:
                     // GC_IO_PENDING -> GC_IN_PROGRESS
                     // Tell the disk to truncate the log.
-                    hlog.Truncate(gc_.truncate_callback);
+                    // hlog.Truncate(gc_.truncate_callback);
                     break;
                 case Phase::REST:
                     // GC_IN_PROGRESS -> REST
                     // GC is done--no more work for threads to do.
                     if (gc_.complete_callback) {
                         gc_.complete_callback();
+                    }
+                    for(int i=0;i<40;i++) {
+                        if (thlog[i]->GetTailAddress().page() == thlog[i]->head_address.page() &&
+                            thlog[i]->GetTailAddress().offset() == thlog[i]->head_address.offset())
+                            continue;
+                        else {
+                            thlog[i]->ShiftHeadAddress(thlog[i]->gc_address.load());
+                        }
                     }
                     system_state_.store(SystemState{Action::None, Phase::REST, next_state.version});
                     break;
@@ -3165,7 +3213,7 @@ void FasterKv<K, V, D>::HandleSpecialPhases() {
                     case Phase::GC_IN_PROGRESS:
                         // Handle GC_IO_PENDING -> GC_IN_PROGRESS and GC_IN_PROGRESS -> GC_IN_PROGRESS.
                         if (!epoch_.HasThreadFinishedPhase(Phase::GC_IN_PROGRESS)) {
-                            if (!CleanHashTableBuckets()) {
+                            if (!CleanHashTableBuckets()&&Gcflag) {
                                 // No more buckets for this thread to clean; thread has finished GC.
                                 thread_ctx().phase = Phase::REST;
                                 // Thread ack that it has finished GC.
@@ -3410,6 +3458,36 @@ bool FasterKv<K, V, D>::ShiftBeginAddress(Address address,
         return false;
     }
     hlog.begin_address.store(address);
+    // Each active thread will notify the epoch when all pending I/Os have completed.
+    epoch_.ResetPhaseFinished();
+    uint64_t num_chunks = std::max(state_[resize_info_.version].size() / kGcHashTableChunkSize,
+                                   (uint64_t) 1);
+    gc_.Initialize(truncate_callback, complete_callback, num_chunks);
+    // Let other threads know to complete their pending I/Os, so that the log can be truncated.
+    system_state_.store(SystemState{Action::GC, Phase::GC_IO_PENDING, expected.version});
+    return true;
+}
+
+template<class K, class V, class D>
+bool FasterKv<K, V, D>::GrabageCollecton(Address address,
+                                          GcState::truncate_callback_t truncate_callback,
+                                          GcState::complete_callback_t complete_callback) {
+    SystemState expected = SystemState{Action::None, Phase::REST, system_state_.load().version};
+    if (!system_state_.compare_exchange_strong(expected,
+                                               SystemState{Action::GC, Phase::REST, expected.version})) {
+        // Can't start a GC while an action is already in progress.
+        return false;
+    }
+    uint16_t k=0;
+    Address a(0,112,0);
+    const record_t *record = reinterpret_cast<const record_t *>(thlog[0]->Get(a));
+    //hlog.begin_address.store(address);
+    for(int i=0;i<40;i++){
+    //    a=address;
+      //  a += Address{0, 0, k}.control();
+        thlog[i]->gc_address.store(thlog[i]->flushed_until_address.load());
+        k++;
+    }
     // Each active thread will notify the epoch when all pending I/Os have completed.
     epoch_.ResetPhaseFinished();
     uint64_t num_chunks = std::max(state_[resize_info_.version].size() / kGcHashTableChunkSize,
